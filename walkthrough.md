@@ -72,3 +72,65 @@ Finished supabase db push.
 
 - `npm run lint` → exit 0 (clean)
 - `npm run build` → ✓ Compiled successfully (Next.js 16.1.6 Turbopack)
+
+## Gate 3: Auth + Org Context (SSR) — Walkthrough
+
+## Summary
+
+Gate 3 implemented the full SSR authentication flow using `@supabase/ssr`, including cookie handling via `getAll/setAll`, middleware session refresh, server actions for sign-in/sign-up/sign-out, and protected organization context in the `/app` area.
+
+## Environment & Packages
+
+- `@supabase/supabase-js`: `^2.95.3`
+- `@supabase/ssr`: `^0.8.0`
+
+## Files Created/Updated
+
+- `src/lib/supabase/client.ts` (Browser client)
+- `src/lib/supabase/server.ts` (Server client - getAll/setAll only)
+- `src/lib/supabase/middleware.ts` (Session update utility)
+- `middleware.ts` (Next.js middleware)
+- `src/app/auth/actions.ts` (Auth Server Actions)
+- `src/app/auth/sign-in/page.tsx` (Sign-in form)
+- `src/app/auth/sign-up/page.tsx` (Sign-up form)
+- `src/app/auth/sign-up-success/page.tsx` (Post-signup message)
+- `src/app/auth/confirm/route.ts` (Email confirmation handler)
+- `src/app/auth/error/page.tsx` (Auth error display)
+- `src/app/app/layout.tsx` (Auth guard + Org context layout)
+- `src/app/app/page.tsx` (Org membership list)
+- `src/app/app/onboarding/page.tsx` (First org creation)
+- `src/app/app/actions.ts` (Organization Server Actions)
+
+## Middleware Configuration
+
+```typescript
+export const config = {
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+  ],
+};
+```
+
+## Proof of Build
+
+- `npm run lint` → Exit 0 (Clean)
+- `npm run build` → ✓ Compiled successfully (Next.js 16.1.6 Turbopack)
+
+### Route Manifest (Gate 3)
+
+| Route | Type | Description |
+|---|---|---|
+| `/` | Static | Landing Page |
+| `/auth/sign-in` | Static | Sign In Form |
+| `/auth/sign-up` | Static | Sign Up Form |
+| `/auth/sign-up-success` | Static | Post-signup Confirmation |
+| `/auth/confirm` | Dynamic | OTP Handler |
+| `/auth/error` | Dynamic | Error Display |
+| `/app` | Dynamic | Protected Area (Dashboard) |
+| `/app/onboarding` | Dynamic | Org Creation Flow |
+
+## Notes
+
+- Email confirmation flow is supported via `/auth/confirm` (token_hash verification).
+- JWT validation uses `supabase.auth.getUser()` in middleware and server components for security.
+- Organization creation relies on the `on_org_created_add_owner` DB trigger created in Gate 2.
