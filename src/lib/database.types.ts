@@ -136,6 +136,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          active_tenant_id: string | null
           created_at: string
           email: string | null
           full_name: string | null
@@ -143,6 +144,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          active_tenant_id?: string | null
           created_at?: string
           email?: string | null
           full_name?: string | null
@@ -150,13 +152,22 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          active_tenant_id?: string | null
           created_at?: string
           email?: string | null
           full_name?: string | null
           id?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_active_tenant_id_fkey"
+            columns: ["active_tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       projects: {
         Row: {

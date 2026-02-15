@@ -355,3 +355,51 @@ toc_versions_one_draft_per_project | CREATE UNIQUE INDEX ... ON toc_versions (pr
 - `npm run build` → ✓ Compiled successfully (Next.js 16.1.6 Turbopack)
 - `supabase gen types typescript --linked` → `src/lib/database.types.ts` regenerated
 
+
+## Gate 6: Active Tenant (Workspace) Selection — Walkthrough
+
+## Summary
+Gate 6 implemented deterministic workspace persistence via `profiles.active_tenant_id`, providing a dedicated workspace selection UI and hardened RLS policies to ensure users can only select tenants they are members of.
+
+## DB Migration result
+
+```bash
+Applying migration 20260215215401_gate6_1_profiles_active_tenant_rls.sql...
+Finished supabase db push.
+```
+
+## Verification Outputs (SQL Proof)
+
+### Profile Column & Constraint
+| column_name | data_type | is_nullable |
+|---|---|---|
+| active_tenant_id | uuid | YES |
+
+### Foreign Key & Index
+| constraint_name | foreign_table_name | column_name |
+|---|---|---|
+| profiles_active_tenant_id_fkey | organizations | active_tenant_id |
+
+| indexname | indexdef |
+|---|---|
+| idx_profiles_active_tenant_id | CREATE INDEX idx_profiles_active_tenant_id ON public.profiles USING btree (active_tenant_id) |
+
+### RLS Policy Hardening
+| policyname | cmd | with_check |
+|---|---|---|
+| profiles_update_own | UPDATE | `((id = auth.uid()) AND ((active_tenant_id IS NULL) OR is_tenant_member(active_tenant_id)))` |
+
+## App Layer Implementation
+- **Tenant Utility**: `src/lib/tenant.ts` updated with auto-resolution and persistence logic in `getActiveTenant`.
+- **Workspace Selector**: `src/app/app/workspaces/page.tsx` created for manual tenant switching.
+- **App Layout**: `src/app/app/layout.tsx` enforces active tenant for any authenticated user with memberships.
+
+## Proof of Build & Lint
+- `npm run lint` → Exit 0 (Clean)
+- `npm run build` → ✓ Compiled successfully (Next.js 16.1.6 Turbopack)
+- `supabase gen types typescript --linked` → `src/lib/database.types.ts` updated with `active_tenant_id`.
+
+## Security & Compliance
+- **Server Actions**: Workspace selection uses server actions to update `profiles.active_tenant_id`.
+- **Membership Check**: `setActiveTenant` verifies membership server-side; RLS reinforces this at the DB level.
+- **Deterministic Resolution**: `getActiveTenant` ensures a single workspace is auto-selected or the user is forced to choose.
