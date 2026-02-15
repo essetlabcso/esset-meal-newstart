@@ -33,7 +33,6 @@ export async function createAnalysisSnapshot(
             project_id: projectId,
             title,
             snapshot: { notes },
-            created_by: (await supabase.auth.getUser()).data.user?.id
         })
         .select()
         .single();

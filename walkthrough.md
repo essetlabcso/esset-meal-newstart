@@ -253,3 +253,105 @@ Verified specific policies for tenant isolation and draft immutability.
 - **Copy-on-Write**: New versions are created via deep clones (Nodes + Edges + Assumptions).
 - **Immutability**: Once a version is `PUBLISHED`, all associated graph entities are locked by RLS.
 - **Tenant Scope Check**: Enforced at the RPC level and RLS level using `tenant_id`.
+
+## Gate 5.1: Hardening Patch — Walkthrough
+
+## Summary
+Gate 5.1 hardens the ToC graph engine by fixing three security/correctness issues:
+1. **RLS tenant consistency gap** — `_modify` policies now enforce `v.tenant_id = <table>.tenant_id` (was `v.tenant_id = v.tenant_id` tautology).
+2. **Clone duplication bug** — `create_toc_draft` rewritten as clean single-pass cursor with temp mapping tables (previously had dual CTE + cursor creating duplicate nodes).
+3. **Missing consistency triggers** — Added `toc_assumption_consistency_trigger` and `toc_edge_assumption_consistency_trigger` for tenant+version enforcement.
+
+## Migration Files
+
+| # | File | Purpose |
+|---|---|---|
+| 1 | `supabase/migrations/20260215184100_gate5_1_hardening.sql` | RPC fixes, RLS policy hardening, consistency triggers |
+| 2 | `supabase/migrations/20260215184200_gate5_1a_fix_rls_qual.sql` | Fix unqualified `tenant_id` in policy EXISTS subqueries |
+
+## db push Results
+
+```
+Applying migration 20260215184100_gate5_1_hardening.sql...
+(DROP IF EXISTS notices — expected for clean idempotent recreate)
+Finished supabase db push.
+
+Applying migration 20260215184200_gate5_1a_fix_rls_qual.sql...
+Finished supabase db push.
+```
+
+## Verification Outputs
+
+### Phase 1: Table Presence
+| table_name |
+|---|
+| analysis_snapshots |
+| toc_assumptions |
+| toc_edge_assumptions |
+| toc_edges |
+| toc_nodes |
+| toc_versions |
+
+### Phase 2: RLS Flags
+| tablename | rowsecurity |
+|---|---|
+| analysis_snapshots | true |
+| toc_assumptions | true |
+| toc_edge_assumptions | true |
+| toc_edges | true |
+| toc_nodes | true |
+| toc_versions | true |
+
+### Phase 3: Policy Listing (qual/with_check proof)
+
+**Key proof — tenant consistency in modify policies:**
+
+| table | cmd | qual/with_check contains |
+|---|---|---|
+| toc_nodes | INSERT | `v.tenant_id = toc_nodes.tenant_id` |
+| toc_nodes | UPDATE | `v.tenant_id = toc_nodes.tenant_id` |
+| toc_nodes | DELETE | `v.tenant_id = toc_nodes.tenant_id` |
+| toc_edges | INSERT | `v.tenant_id = toc_edges.tenant_id` |
+| toc_edges | UPDATE | `v.tenant_id = toc_edges.tenant_id` |
+| toc_edges | DELETE | `v.tenant_id = toc_edges.tenant_id` |
+| toc_assumptions | INSERT | `v.tenant_id = toc_assumptions.tenant_id` |
+| toc_assumptions | UPDATE | `v.tenant_id = toc_assumptions.tenant_id` |
+| toc_assumptions | DELETE | `v.tenant_id = toc_assumptions.tenant_id` |
+| toc_edge_assumptions | INSERT | `v.tenant_id = toc_edge_assumptions.tenant_id` |
+| toc_edge_assumptions | UPDATE | `v.tenant_id = toc_edge_assumptions.tenant_id` |
+| toc_edge_assumptions | DELETE | `v.tenant_id = toc_edge_assumptions.tenant_id` |
+
+All modify policies also contain `v.status = 'DRAFT'` for immutability enforcement.
+
+Total policies: 24 (4 per table × 6 tables). No `FOR ALL` blanket policies remain.
+
+### Phase 4: One-Draft-Per-Project Index
+```
+toc_versions_one_draft_per_project | CREATE UNIQUE INDEX ... ON toc_versions (project_id) WHERE (status = 'DRAFT')
+```
+
+### Phase 5: Trigger Listing
+| table | trigger | timing | event |
+|---|---|---|---|
+| toc_assumptions | set_toc_assumptions_updated_at | BEFORE | UPDATE |
+| toc_assumptions | toc_assumption_consistency_trigger | BEFORE | INSERT, UPDATE |
+| toc_edge_assumptions | set_toc_edge_assumptions_updated_at | BEFORE | UPDATE |
+| toc_edge_assumptions | toc_edge_assumption_consistency_trigger | BEFORE | INSERT, UPDATE |
+| toc_edges | set_toc_edges_updated_at | BEFORE | UPDATE |
+| toc_edges | toc_edge_version_consistency_trigger | BEFORE | INSERT, UPDATE |
+| toc_nodes | set_toc_nodes_updated_at | BEFORE | UPDATE |
+
+### Phase 6: RPC Existence
+| routine_name | routine_type |
+|---|---|
+| create_toc_draft | FUNCTION |
+| publish_toc_version | FUNCTION |
+
+## App Layer Fix
+- Removed explicit `created_by` from analysis snapshot server action insert (line 36); now relies on DB column default `auth.uid()`.
+
+## Proof of Build & Lint
+- `npm run lint` → Exit 0 (Clean)
+- `npm run build` → ✓ Compiled successfully (Next.js 16.1.6 Turbopack)
+- `supabase gen types typescript --linked` → `src/lib/database.types.ts` regenerated
+
