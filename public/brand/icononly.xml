@@ -1,0 +1,22 @@
+<svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="leafGrad3" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#F3921D;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#FDB833;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <g transform="translate(14, 0)">
+    <path fill="#0E4244" d="M25,85 L25,115 L65,135 L65,105 Z"/>
+    <path fill="#1A7067" d="M25,85 L65,65 L105,85 L65,105 Z"/>
+    <path fill="#105253" d="M65,135 L105,115 L105,85 L65,105 Z"/>
+
+    <path fill="#0E4244" d="M25,45 L25,75 L65,95 L65,65 Z"/>
+    <path fill="#1A7067" d="M25,45 L65,25 L105,45 L65,65 Z"/>
+    <path fill="#105253" d="M65,95 L105,75 L105,45 L65,65 Z"/>
+    
+    <path fill="none" stroke="#FDB833" stroke-width="6" stroke-linecap="round" d="M65,25 L65,10"/>
+    <path fill="url(#leafGrad3)" d="M65,25 C45,10 30,10 30,35 C45,40 55,30 65,25 Z"/>
+    <path fill="url(#leafGrad3)" d="M65,25 C85,5 100,5 100,30 C85,35 75,25 65,25 Z"/>
+  </g>
+</svg>

@@ -1,0 +1,10 @@
+<svg viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg" fill="none">
+  <!-- Connections -->
+  <path d="M128 80 L70 180" stroke="#105253" stroke-width="16" stroke-linecap="round" />
+  <path d="M128 80 L186 180" stroke="#105253" stroke-width="16" stroke-linecap="round" />
+  
+  <!-- Nodes -->
+  <circle cx="128" cy="80" r="40" fill="#105253" />
+  <circle cx="70" cy="180" r="30" fill="#105253" />
+  <circle cx="186" cy="180" r="30" fill="#105253" />
+</svg>

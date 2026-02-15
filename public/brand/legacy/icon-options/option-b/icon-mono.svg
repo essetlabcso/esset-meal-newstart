@@ -1,0 +1,8 @@
+<svg viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg" fill="none">
+  <!-- Loop Ring -->
+  <path d="M128 32 A96 96 0 1 1 60 58" stroke="#105253" stroke-width="20" stroke-linecap="round" />
+  <path d="M60 58 L36 34 M60 58 L84 34" stroke="#105253" stroke-width="20" stroke-linecap="round" stroke-linejoin="round" />
+  
+  <!-- Needle -->
+  <path d="M128 60 L96 128 L128 196 L160 128 Z" fill="#105253" />
+</svg>

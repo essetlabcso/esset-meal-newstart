@@ -1,0 +1,28 @@
+<svg width="600" height="200" viewBox="0 0 600 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Icon (left side) -->
+  <g transform="translate(0, 0)">
+    <!-- Outer circle boundary (subtle) -->
+    <circle cx="100" cy="100" r="90" stroke="#005F56" stroke-width="4" fill="none" opacity="0.3"/>
+    
+    <!-- Three flowing pathway curves -->
+    <path d="M 100 30 Q 140 50 145 90 Q 148 120 130 145 Q 110 165 85 155" 
+          stroke="#005F56" stroke-width="12" fill="none" stroke-linecap="round"/>
+    <path d="M 55 60 Q 45 85 50 110 Q 58 140 85 155 Q 110 165 130 145" 
+          stroke="#005F56" stroke-width="12" fill="none" stroke-linecap="round"/>
+    <path d="M 130 50 Q 155 70 160 100 Q 162 130 145 155 Q 125 170 100 165" 
+          stroke="#F4A026" stroke-width="12" fill="none" stroke-linecap="round"/>
+    
+    <!-- Connection points -->
+    <circle cx="100" cy="165" r="6" fill="#005F56"/>
+    <circle cx="130" cy="145" r="6" fill="#005F56"/>
+    <circle cx="85" cy="155" r="6" fill="#F4A026"/>
+  </g>
+  
+  <!-- Wordmark (right side) -->
+  <g transform="translate(240, 100)">
+    <!-- ESSET -->
+    <text x="0" y="0" font-family="Arial, Helvetica, sans-serif" font-size="72" font-weight="700" fill="#2D3338" letter-spacing="-0.02em">ESSET</text>
+    <!-- MEAL -->
+    <text x="0" y="50" font-family="Arial, Helvetica, sans-serif" font-size="60" font-weight="700" fill="#F4A026" letter-spacing="-0.01em">MEAL</text>
+  </g>
+</svg>
