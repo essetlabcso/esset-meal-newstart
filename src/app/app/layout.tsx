@@ -18,17 +18,15 @@ export default async function AppLayout({
     }
 
     // Check org memberships
-    const { data: memberships } = await supabase
-        .from("org_memberships")
-        .select("org_id, role, organizations(id, name, created_at)")
-        .eq("user_id", user.id);
+    const { getActiveTenant } = await import("@/lib/tenant");
+    const tenant = await getActiveTenant(supabase);
 
-    if (!memberships || memberships.length === 0) {
+    if (!tenant) {
         // Allow access to onboarding even with no memberships
         return <>{children}</>;
     }
 
-    const activeOrg = memberships[0].organizations;
+    const activeOrg = { name: tenant.tenantName };
 
     return (
         <div className="min-h-screen bg-gray-950 text-white">

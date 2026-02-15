@@ -134,3 +134,67 @@ export const config = {
 - Email confirmation flow is supported via `/auth/confirm` (token_hash verification).
 - JWT validation uses `supabase.auth.getUser()` in middleware and server components for security.
 - Organization creation relies on the `on_org_created_add_owner` DB trigger created in Gate 2.
+
+## Gate 4: Projects (tenant-scoped) — Walkthrough
+
+## Summary
+
+Gate 4 implemented the tenant-scoped `projects` table with strict RLS policies, server actions that enforce tenancy (never trust client input), and a minimal UI for listing, creating, and managing projects.
+
+## DB Migration result
+
+```
+Applying migration 20260215054710_gate4_projects.sql...
+NOTICE (42710): extension "pgcrypto" already exists, skipping
+Finished supabase db push.
+```
+
+## Verification Outputs (SQL Proof)
+
+### RLS Flags
+| relname | relrowsecurity |
+|---|---|
+| projects | true |
+
+### Policies (4 total)
+| tablename | policyname |
+|---|---|
+| projects | projects_delete_admin_only |
+| projects | projects_insert_if_member |
+| projects | projects_select_if_member |
+| projects | projects_update_admin_only |
+
+### Triggers
+| tgname | relname |
+|---|---|
+| trg_projects_updated_at | projects |
+
+## Files Created/Updated
+
+- `supabase/migrations/20260215054710_gate4_projects.sql` (Migration)
+- `supabase/verify/gate4_verify.sql` (Verification script)
+- `src/lib/tenant.ts` (Active tenant resolver)
+- `src/app/app/projects/actions.ts` (Tenant-scoped server actions)
+- `src/app/app/projects/page.tsx` (Project list)
+- `src/app/app/projects/new/page.tsx` (New project form)
+- `src/app/app/projects/[projectId]/page.tsx` (Project detail/edit)
+- `src/app/app/layout.tsx` (Updated to show active tenant name)
+
+## Proof of Build
+
+- `npm run lint` → Exit 0 (Clean)
+- `npm run build` → ✓ Compiled successfully
+
+### Route Manifest (Gate 4 Append)
+
+| Route | Type | Description |
+|---|---|---|
+| `/app/projects` | Dynamic | Project Listing |
+| `/app/projects/new` | Dynamic | New Project Form |
+| `/app/projects/[projectId]` | Dynamic | Project Detail / Edit |
+
+## Notes
+
+- Tenancy Rule: `projects.tenant_id` references `organizations.id`.
+- Security: `getActiveTenant()` is used in all server actions to resolve `tenant_id` server-side.
+- RLS: Policies use `is_tenant_member()` and `is_org_admin()` helpers.
