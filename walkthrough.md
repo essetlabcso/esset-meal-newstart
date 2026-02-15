@@ -198,3 +198,58 @@ Finished supabase db push.
 - Tenancy Rule: `projects.tenant_id` references `organizations.id`.
 - Security: `getActiveTenant()` is used in all server actions to resolve `tenant_id` server-side.
 - RLS: Policies use `is_tenant_member()` and `is_org_admin()` helpers.
+
+## Gate 5: Theory of Change Graph Engine — Walkthrough
+
+## Summary
+Gate 5 implemented the core strategy graph engine for the theory of change model, including Analysis Snapshots (anchor points) and versioned Node/Edge/Assumption persistence with Copy-on-Write semantics.
+
+## DB Migration result
+```bash
+Applying migration 20260215061500_gate5_toc_graph.sql...
+Finished supabase db push.
+```
+
+## Verification Outputs (SQL Proof)
+
+### Table Presence & RLS Status
+| table_name | rowsecurity |
+|---|---|
+| analysis_snapshots | true |
+| toc_versions | true |
+| toc_nodes | true |
+| toc_edges | true |
+| toc_assumptions | true |
+| toc_edge_assumptions | true |
+
+### Policies (RLS Audit)
+Verified specific policies for tenant isolation and draft immutability.
+- Analysis Snapshots: INSERT only, immutability enforced for SELECT.
+- ToC Entities: CRUD restricted to `DRAFT` status versions only.
+
+### RPC Verification
+- `public.create_toc_draft`: Successfully clones nodes, edges, and assumptions from a source version to a new draft.
+- `public.publish_toc_version`: Atomically marks a draft as `PUBLISHED` (immutable).
+
+## App Layer Implementation
+- **Server Actions**:
+    - `Analysis Snapshots`: Create immutable anchor points.
+    - `ToC Builder`: Manage nodes, CONTRIBUTES_TO edges, and assumption mapping.
+- **UI Routes**:
+    - `/app/projects/[projectId]/analysis`: Snapshot history.
+    - `/app/projects/[projectId]/toc`: Versioned graph editor (Hybrid list view).
+
+## Proof of Build & Lint
+- `npm run lint` → Exit 0 (Clean)
+- `npm run build` → ✓ Compiled successfully
+
+### Route Manifest (Gate 5 Append)
+| Route | Type | Description |
+|---|---|---|
+| `/app/projects/[projectId]/analysis` | Dynamic | Analysis History |
+| `/app/projects/[projectId]/toc` | Dynamic | ToC Graph Editor |
+
+## Security & Compliance
+- **Copy-on-Write**: New versions are created via deep clones (Nodes + Edges + Assumptions).
+- **Immutability**: Once a version is `PUBLISHED`, all associated graph entities are locked by RLS.
+- **Tenant Scope Check**: Enforced at the RPC level and RLS level using `tenant_id`.

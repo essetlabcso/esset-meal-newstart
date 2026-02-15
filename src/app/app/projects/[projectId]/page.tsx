@@ -41,6 +41,29 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
                 </form>
             </div>
 
+            <div className="mb-8 grid grid-cols-2 gap-4">
+                <Link
+                    href={`/app/projects/${projectId}/toc`}
+                    className="flex items-center justify-between rounded-xl bg-white/5 border border-white/5 p-4 hover:bg-white/10 transition group"
+                >
+                    <div>
+                        <div className="text-sm font-medium text-white">ToC Builder</div>
+                        <div className="text-xs text-gray-400">Map theory of change graph</div>
+                    </div>
+                    <span className="text-emerald-500 group-hover:translate-x-1 transition-transform">→</span>
+                </Link>
+                <Link
+                    href={`/app/projects/${projectId}/analysis`}
+                    className="flex items-center justify-between rounded-xl bg-white/5 border border-white/5 p-4 hover:bg-white/10 transition group"
+                >
+                    <div>
+                        <div className="text-sm font-medium text-white">Analysis Snapshots</div>
+                        <div className="text-xs text-gray-400">View analysis history</div>
+                    </div>
+                    <span className="text-emerald-500 group-hover:translate-x-1 transition-transform">→</span>
+                </Link>
+            </div>
+
             <form action={updateProjectWithId} className="space-y-6 bg-white/5 border border-white/5 rounded-xl p-6">
                 <div>
                     <label htmlFor="title" className="block text-sm font-medium text-gray-300">

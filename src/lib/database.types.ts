@@ -39,6 +39,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      analysis_snapshots: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          project_id: string
+          snapshot: Json
+          tenant_id: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          project_id: string
+          snapshot?: Json
+          tenant_id: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          project_id?: string
+          snapshot?: Json
+          tenant_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analysis_snapshots_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "analysis_snapshots_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       org_memberships: {
         Row: {
           created_at: string
@@ -163,13 +208,307 @@ export type Database = {
           },
         ]
       }
+      toc_assumptions: {
+        Row: {
+          assumption_text: string
+          created_at: string
+          id: string
+          node_id: string
+          risk_level: string | null
+          tenant_id: string
+          toc_version_id: string
+          updated_at: string
+        }
+        Insert: {
+          assumption_text: string
+          created_at?: string
+          id?: string
+          node_id: string
+          risk_level?: string | null
+          tenant_id: string
+          toc_version_id: string
+          updated_at?: string
+        }
+        Update: {
+          assumption_text?: string
+          created_at?: string
+          id?: string
+          node_id?: string
+          risk_level?: string | null
+          tenant_id?: string
+          toc_version_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "toc_assumptions_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "toc_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "toc_assumptions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "toc_assumptions_toc_version_id_fkey"
+            columns: ["toc_version_id"]
+            isOneToOne: false
+            referencedRelation: "toc_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      toc_edge_assumptions: {
+        Row: {
+          assumption_text: string
+          created_at: string
+          edge_id: string
+          id: string
+          risk_level: string | null
+          tenant_id: string
+          toc_version_id: string
+          updated_at: string
+        }
+        Insert: {
+          assumption_text: string
+          created_at?: string
+          edge_id: string
+          id?: string
+          risk_level?: string | null
+          tenant_id: string
+          toc_version_id: string
+          updated_at?: string
+        }
+        Update: {
+          assumption_text?: string
+          created_at?: string
+          edge_id?: string
+          id?: string
+          risk_level?: string | null
+          tenant_id?: string
+          toc_version_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "toc_edge_assumptions_edge_id_fkey"
+            columns: ["edge_id"]
+            isOneToOne: false
+            referencedRelation: "toc_edges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "toc_edge_assumptions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "toc_edge_assumptions_toc_version_id_fkey"
+            columns: ["toc_version_id"]
+            isOneToOne: false
+            referencedRelation: "toc_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      toc_edges: {
+        Row: {
+          created_at: string
+          edge_type: string
+          id: string
+          source_node_id: string
+          target_node_id: string
+          tenant_id: string
+          toc_version_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          edge_type?: string
+          id?: string
+          source_node_id: string
+          target_node_id: string
+          tenant_id: string
+          toc_version_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          edge_type?: string
+          id?: string
+          source_node_id?: string
+          target_node_id?: string
+          tenant_id?: string
+          toc_version_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "toc_edges_source_node_id_fkey"
+            columns: ["source_node_id"]
+            isOneToOne: false
+            referencedRelation: "toc_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "toc_edges_target_node_id_fkey"
+            columns: ["target_node_id"]
+            isOneToOne: false
+            referencedRelation: "toc_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "toc_edges_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "toc_edges_toc_version_id_fkey"
+            columns: ["toc_version_id"]
+            isOneToOne: false
+            referencedRelation: "toc_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      toc_nodes: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          metadata: Json
+          node_type: string
+          tenant_id: string
+          title: string
+          toc_version_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          metadata?: Json
+          node_type: string
+          tenant_id: string
+          title: string
+          toc_version_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          metadata?: Json
+          node_type?: string
+          tenant_id?: string
+          title?: string
+          toc_version_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "toc_nodes_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "toc_nodes_toc_version_id_fkey"
+            columns: ["toc_version_id"]
+            isOneToOne: false
+            referencedRelation: "toc_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      toc_versions: {
+        Row: {
+          analysis_snapshot_id: string
+          created_at: string
+          created_by: string
+          id: string
+          project_id: string
+          published_at: string | null
+          status: string
+          tenant_id: string
+          version_number: number
+        }
+        Insert: {
+          analysis_snapshot_id: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          project_id: string
+          published_at?: string | null
+          status: string
+          tenant_id: string
+          version_number: number
+        }
+        Update: {
+          analysis_snapshot_id?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          project_id?: string
+          published_at?: string | null
+          status?: string
+          tenant_id?: string
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "toc_versions_analysis_snapshot_id_fkey"
+            columns: ["analysis_snapshot_id"]
+            isOneToOne: false
+            referencedRelation: "analysis_snapshots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "toc_versions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "toc_versions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      create_toc_draft: {
+        Args: {
+          _analysis_snapshot_id: string
+          _from_version_id?: string
+          _project_id: string
+          _tenant_id: string
+        }
+        Returns: string
+      }
       is_org_admin: { Args: { _org_id: string }; Returns: boolean }
       is_tenant_member: { Args: { _tenant_id: string }; Returns: boolean }
+      publish_toc_version: {
+        Args: { _project_id: string; _tenant_id: string; _version_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
