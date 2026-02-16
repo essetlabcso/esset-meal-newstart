@@ -483,3 +483,47 @@ SELECT relname, relrowsecurity FROM pg_class c JOIN pg_namespace n ON n.oid = c.
 - `npm run lint` → **Exit 0**.
 - `npm run build` → **Compiled successfully**.
 - `database.types.ts` → Regenerated with layout columns.
+
+## Gate 8: ToC Graph Editing (Edges) + Version Controls — Walkthrough
+
+## Summary
+
+Gate 8 implemented core graph interactivity (edge creation/deletion, node deletion) and project-level version management. Immutability is strictly enforced for `PUBLISHED` versions, and `member` roles are restricted to read-only access.
+
+## Files Created/Updated
+
+- `src/app/app/projects/[projectId]/toc/actions.ts`: Added `assertEditableContext` and edge/node mutation actions.
+- `src/app/app/projects/[projectId]/toc/TocGraphClient.tsx`: Enabled interactive connections and deletions in React Flow.
+- `src/app/app/projects/[projectId]/toc/page.tsx`: Implemented version switcher, Publish, and New Draft controls.
+- `supabase/verify/gate8_verify.sql`: RLS verification script.
+
+## Verification Outputs (RLS Proof)
+
+### Phase 1: ToC RLS Status
+| table_name | rls_enabled |
+|---|---|
+| toc_assumptions | true |
+| toc_edge_assumptions | true |
+| toc_edges | true |
+| toc_nodes | true |
+| toc_versions | true |
+
+### Phase 2: Policy Consistency
+Verified that all mutation policies (INSERT/UPDATE/DELETE) for nodes, edges, and assumptions:
+1. Enforce `is_tenant_member(tenant_id)`.
+2. Restrict changes to versions where `status = 'DRAFT'`.
+3. Verify `tenant_id` consistency between entity and version.
+
+### Phase 3: No Blanket Policies
+- `forbidden_blanket_policies` → **0** (No `FOR ALL` policies found).
+
+## Quality Gate
+
+- `supabase gen types typescript --linked` → Regenerated `database.types.ts`.
+- `npm run lint` → **Exit 0 (Clean)**.
+- `npm run build` → **✓ Compiled successfully (Next.js 16.1.6 Turbopack)**.
+
+## Git Status
+
+- `git status` → Working tree aligned.
+- `git log` → Consolidated Gate 8 implementation.

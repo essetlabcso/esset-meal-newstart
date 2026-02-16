@@ -6,7 +6,6 @@ import {
     createTocDraft,
     publishToc,
     addNode,
-    addEdge,
     addNodeAssumption
 } from "./actions";
 import TocGraphClient from "./TocGraphClient";
@@ -17,12 +16,13 @@ interface TocBuilderPageProps {
     }>;
     searchParams: Promise<{
         snapshot?: string;
+        v?: string;
     }>;
 }
 
 export default async function TocBuilderPage({ params, searchParams }: TocBuilderPageProps) {
     const { projectId } = await params;
-    const { snapshot: snapshotIdParam } = await searchParams;
+    const { snapshot: snapshotIdParam, v: selectedVersionId } = await searchParams;
     const supabase = await createClient();
     const tenant = await getActiveTenant(supabase);
 
@@ -38,26 +38,34 @@ export default async function TocBuilderPage({ params, searchParams }: TocBuilde
 
     if (!project) return notFound();
 
-    // 2. Fetch all versions to allow switching (or just latest)
+    // 2. Fetch all versions for the project
     const { data: versions } = await supabase
         .from("toc_versions")
-        .select("*")
+        .select("id, version_number, status, created_at, analysis_snapshot_id")
         .eq("project_id", projectId)
         .eq("tenant_id", tenant.tenantId)
-        .order("version_number", { ascending: false });
+        .order("created_at", { ascending: false });
 
-    const draftVersion = versions?.find(v => v.status === 'DRAFT');
-    const publishedVersions = versions?.filter(v => v.status === 'PUBLISHED');
-    const latestPublished = publishedVersions?.[0];
+    // 3. Determine active version
+    let activeVersion = null;
+    if (selectedVersionId) {
+        activeVersion = versions?.find(v => v.id === selectedVersionId) || null;
+    }
 
-    // --- CASE A: NO DRAFT EXISTS ---
-    if (!draftVersion) {
+    // If no selected version or selected version not found, pick default
+    if (!activeVersion && versions && versions.length > 0) {
+        activeVersion = versions.find(v => v.status === 'DRAFT') || versions[0];
+    }
+
+    // --- CASE A: NO VERSIONS EXIST OR EXPLICIT CTA ---
+    if (!activeVersion) {
         // Fetch snapshots for the "Start ToC" dropdown
         const { data: snapshots } = await supabase
             .from("analysis_snapshots")
             .select("id, title")
             .eq("project_id", projectId)
-            .eq("tenant_id", tenant.tenantId);
+            .eq("tenant_id", tenant.tenantId)
+            .order("created_at", { ascending: false });
 
         return (
             <div className="p-8 max-w-2xl mx-auto">
@@ -79,15 +87,14 @@ export default async function TocBuilderPage({ params, searchParams }: TocBuilde
                     <form action={async (formData: FormData) => {
                         "use server"
                         const sid = formData.get("snapshot_id") as string;
-                        const fromVid = formData.get("from_version_id") as string;
-                        await createTocDraft(projectId, sid, fromVid || undefined);
+                        await createTocDraft(projectId, sid);
                     }} className="space-y-4 text-left max-w-sm mx-auto">
                         <div>
                             <label className="block text-sm font-medium text-gray-300 mb-1">Select Analysis Snapshot</label>
                             <select
                                 name="snapshot_id"
                                 required
-                                defaultValue={snapshotIdParam || ""}
+                                defaultValue={snapshotIdParam || snapshots?.[0]?.id || ""}
                                 className="w-full rounded-lg border border-white/10 bg-white/5 p-2.5 text-white focus:border-emerald-500 focus:outline-none"
                             >
                                 <option value="" disabled>Choose a snapshot...</option>
@@ -97,13 +104,6 @@ export default async function TocBuilderPage({ params, searchParams }: TocBuilde
                                 <p className="text-xs text-amber-400 mt-2">No snapshots found. <Link href={`/app/projects/${projectId}/analysis`} className="underline">Create one first.</Link></p>
                             )}
                         </div>
-
-                        {latestPublished && (
-                            <div className="flex items-center space-x-2">
-                                <input type="checkbox" id="clone" name="from_version_id" value={latestPublished.id} className="rounded border-white/10 bg-white/5 text-emerald-500" />
-                                <label htmlFor="clone" className="text-sm text-gray-300">Clone from latest published (v{latestPublished.version_number})</label>
-                            </div>
-                        )}
 
                         <button
                             type="submit"
@@ -119,10 +119,9 @@ export default async function TocBuilderPage({ params, searchParams }: TocBuilde
     }
 
     // --- CASE B: DRAFT/PUBLISHED EDITOR ---
-    // (For this implementation, we focus on the ACTIVE DRAFT)
-    const activeVersion = draftVersion;
+    const isEditable = activeVersion.status === "DRAFT" && tenant.role !== "member";
 
-    // Fetch Nodes, Edges, and Assumptions for the active version
+    // Fetch Nodes and Edges for the active version
     const { data: nodes } = await supabase
         .from("toc_nodes")
         .select("*, toc_assumptions(*)")
@@ -135,31 +134,81 @@ export default async function TocBuilderPage({ params, searchParams }: TocBuilde
         .eq("toc_version_id", activeVersion.id)
         .eq("tenant_id", tenant.tenantId);
 
-    const isEditable = activeVersion.status === "DRAFT" && tenant.role !== "member";
+    // Get latest published for cloning purposes
+    const latestPublished = versions?.find(v => v.status === 'PUBLISHED');
+
+    // Get latest snapshot for "New Draft" logic
+    const { data: latestSnapshot } = await supabase
+        .from("analysis_snapshots")
+        .select("id")
+        .eq("project_id", projectId)
+        .eq("tenant_id", tenant.tenantId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
     return (
         <div className="p-8 max-w-6xl mx-auto">
             {/* Header */}
-            <div className="mb-8 flex items-center justify-between">
+            <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <Link href={`/app/projects/${projectId}`} className="text-sm text-gray-400 hover:text-white transition">← Back to Project</Link>
                     <div className="flex items-center space-x-3 mt-4">
-                        <h1 className="text-2xl font-bold text-white uppercase tracking-tight">{project.title} - ToC v{activeVersion.version_number}</h1>
+                        <h1 className="text-2xl font-bold text-white uppercase tracking-tight">{project.title}</h1>
                         <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${activeVersion.status === 'DRAFT' ? 'bg-amber-500/10 text-amber-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
                             {activeVersion.status}
                         </span>
                     </div>
                 </div>
-                <div className="flex space-x-3">
-                    {activeVersion.status === 'DRAFT' && tenant.role !== 'member' && (
-                        <form action={async () => {
-                            "use server"
-                            await publishToc(projectId, activeVersion.id);
-                        }}>
-                            <button className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-600 transition">
-                                Publish Version
-                            </button>
-                        </form>
+
+                <div className="flex flex-wrap items-center gap-3">
+                    {/* Version Selector */}
+                    <div className="flex items-center space-x-2 bg-white/5 border border-white/10 rounded-lg p-1">
+                        <span className="text-[10px] font-bold text-gray-500 px-2 uppercase">Version:</span>
+                        <select
+                            className="bg-transparent text-xs text-white outline-none pr-4"
+                            defaultValue={activeVersion.id}
+                            onChange={(e) => {
+                                // Simple client routing for selector
+                                window.location.href = `/app/projects/${projectId}/toc?v=${e.target.value}`;
+                            }}
+                        >
+                            {versions?.map(v => (
+                                <option key={v.id} value={v.id} className="bg-gray-900">
+                                    v{v.version_number} ({v.status}) - {new Date(v.created_at).toLocaleDateString()}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {/* Admin Actions */}
+                    {tenant.role !== 'member' && (
+                        <div className="flex items-center gap-2">
+                            {activeVersion.status === 'DRAFT' && (
+                                <form action={async () => {
+                                    "use server"
+                                    await publishToc(projectId, activeVersion.id);
+                                }}>
+                                    <button className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-600 transition">
+                                        Publish
+                                    </button>
+                                </form>
+                            )}
+
+                            <form action={async () => {
+                                "use server"
+                                if (!latestSnapshot) throw new Error("Create an analysis snapshot first.");
+                                await createTocDraft(projectId, latestSnapshot.id, latestPublished?.id);
+                            }}>
+                                <button
+                                    disabled={!latestSnapshot}
+                                    title={!latestSnapshot ? "Create an analysis snapshot first" : "Create new draft"}
+                                    className="rounded-lg bg-white/10 px-4 py-2 text-sm font-medium text-white hover:bg-white/20 transition disabled:opacity-50"
+                                >
+                                    New Draft
+                                </button>
+                            </form>
+                        </div>
                     )}
                 </div>
             </div>
@@ -168,7 +217,7 @@ export default async function TocBuilderPage({ params, searchParams }: TocBuilde
             <div className="mb-12">
                 <div className="flex items-center justify-between mb-4">
                     <h2 className="text-xs font-black tracking-widest text-gray-500 uppercase">Strategy Graph Builder</h2>
-                    <div className="text-[10px] text-gray-500 italic">Drag nodes to persist layout</div>
+                    {isEditable && <div className="text-[10px] text-gray-500 italic">Drag to move • Connect handles to link • Press Delete to remove</div>}
                 </div>
                 <TocGraphClient
                     projectId={projectId}
@@ -182,48 +231,38 @@ export default async function TocBuilderPage({ params, searchParams }: TocBuilde
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
                 {/* Sidebar: Controls */}
                 <div className="lg:col-span-1 space-y-6">
-                    {/* Add Node Form */}
-                    <div className="bg-white/5 border border-white/5 rounded-xl p-5">
-                        <h3 className="text-sm font-bold text-gray-300 mb-4 uppercase">Add Node</h3>
-                        <form action={async (formData: FormData) => {
-                            "use server"
-                            const type = formData.get("type") as string;
-                            const title = formData.get("title") as string;
-                            const desc = formData.get("description") as string;
-                            await addNode(projectId, activeVersion.id, type, title, desc);
-                        }} className="space-y-3">
-                            <select name="type" required className="w-full rounded-lg border border-white/10 bg-white/5 text-sm p-2 text-white outline-none">
-                                <option value="GOAL">GOAL</option>
-                                <option value="OUTCOME">OUTCOME</option>
-                                <option value="OUTPUT">OUTPUT</option>
-                                <option value="ACTIVITY">ACTIVITY</option>
-                            </select>
-                            <input name="title" required placeholder="Node Title" className="w-full rounded-lg border border-white/10 bg-white/5 text-sm p-2 text-white outline-none" />
-                            <textarea name="description" placeholder="Optional description..." className="w-full rounded-lg border border-white/10 bg-white/5 text-sm p-2 text-white outline-none" rows={2} />
-                            <button className="w-full bg-white/10 hover:bg-white/20 text-white text-xs font-bold py-2 rounded-lg transition">+ Create Node</button>
-                        </form>
-                    </div>
+                    {/* Add Node Form - Only for DRAFT + Admin */}
+                    {isEditable && (
+                        <div className="bg-white/5 border border-white/5 rounded-xl p-5">
+                            <h3 className="text-sm font-bold text-gray-300 mb-4 uppercase">Add Node</h3>
+                            <form action={async (formData: FormData) => {
+                                "use server"
+                                const type = formData.get("type") as string;
+                                const title = formData.get("title") as string;
+                                const desc = formData.get("description") as string;
+                                await addNode(projectId, activeVersion.id, type, title, desc);
+                            }} className="space-y-3">
+                                <select name="type" required className="w-full rounded-lg border border-white/10 bg-white/5 text-sm p-2 text-white outline-none">
+                                    <option value="GOAL">GOAL</option>
+                                    <option value="OUTCOME">OUTCOME</option>
+                                    <option value="OUTPUT">OUTPUT</option>
+                                    <option value="ACTIVITY">ACTIVITY</option>
+                                </select>
+                                <input name="title" required placeholder="Node Title" className="w-full rounded-lg border border-white/10 bg-white/5 text-sm p-2 text-white outline-none" />
+                                <textarea name="description" placeholder="Optional description..." className="w-full rounded-lg border border-white/10 bg-white/5 text-sm p-2 text-white outline-none" rows={2} />
+                                <button className="w-full bg-white/10 hover:bg-white/20 text-white text-xs font-bold py-2 rounded-lg transition">+ Create Node</button>
+                            </form>
+                        </div>
+                    )}
 
-                    {/* Add Edge Form */}
-                    <div className="bg-white/5 border border-white/5 rounded-xl p-5">
-                        <h3 className="text-sm font-bold text-gray-300 mb-4 uppercase">Add Connection</h3>
-                        <form action={async (formData: FormData) => {
-                            "use server"
-                            const s = formData.get("source") as string;
-                            const t = formData.get("target") as string;
-                            await addEdge(projectId, activeVersion.id, s, t);
-                        }} className="space-y-3">
-                            <select name="source" required className="w-full rounded-lg border border-white/10 bg-white/5 text-sm p-2 text-white outline-none">
-                                <option value="" disabled selected>Source Node</option>
-                                {nodes?.map(n => <option key={n.id} value={n.id}>{n.title}</option>)}
-                            </select>
-                            <select name="target" required className="w-full rounded-lg border border-white/10 bg-white/5 text-sm p-2 text-white outline-none">
-                                <option value="" disabled selected>Target Node</option>
-                                {nodes?.map(n => <option key={n.id} value={n.id}>{n.title}</option>)}
-                            </select>
-                            <button className="w-full bg-white/10 hover:bg-white/20 text-white text-xs font-bold py-2 rounded-lg transition">+ Connect</button>
-                        </form>
-                    </div>
+                    {!isEditable && (
+                        <div className="bg-amber-500/5 border border-amber-500/10 rounded-xl p-5">
+                            <p className="text-[10px] text-amber-500/80 font-medium">
+                                Editing is disabled for {activeVersion.status === 'PUBLISHED' ? 'published versions' : 'member accounts'}.
+                                {activeVersion.status === 'PUBLISHED' && tenant.role !== 'member' && ' Create a new draft to make changes.'}
+                            </p>
+                        </div>
+                    )}
                 </div>
 
                 {/* Main Graph View (Logical Grouping List) */}
@@ -251,13 +290,15 @@ export default async function TocBuilderPage({ params, searchParams }: TocBuilde
                                                     <span>{ass.assumption_text}</span>
                                                 </div>
                                             ))}
-                                            <form action={async (formData: FormData) => {
-                                                "use server"
-                                                const txt = formData.get("text") as string;
-                                                await addNodeAssumption(projectId, activeVersion.id, node.id, txt, "MEDIUM");
-                                            }} className="opacity-0 group-hover:opacity-100 transition focus-within:opacity-100">
-                                                <input name="text" placeholder="Add assumption..." className="w-full bg-transparent border-b border-white/10 text-[10px] text-gray-400 py-1 outline-none focus:border-emerald-500" />
-                                            </form>
+                                            {isEditable && (
+                                                <form action={async (formData: FormData) => {
+                                                    "use server"
+                                                    const txt = formData.get("text") as string;
+                                                    await addNodeAssumption(projectId, activeVersion.id, node.id, txt, "MEDIUM");
+                                                }} className="opacity-0 group-hover:opacity-100 transition focus-within:opacity-100">
+                                                    <input name="text" placeholder="Add assumption..." className="w-full bg-transparent border-b border-white/10 text-[10px] text-gray-400 py-1 outline-none focus:border-emerald-500" />
+                                                </form>
+                                            )}
                                         </div>
 
                                         {/* Outgoing Edges */}

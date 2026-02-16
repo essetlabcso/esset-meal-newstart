@@ -22,6 +22,43 @@ async function verifyProjectContext(supabase: SupabaseClient<Database>, projectI
     }
 }
 
+/**
+ * Strict check for editability:
+ * - Active tenant exists
+ * - Tenant role != "member"
+ * - Project belongs to tenant
+ * - Version belongs to tenant+project and status == "DRAFT"
+ */
+async function assertEditableContext(
+    supabase: SupabaseClient<Database>,
+    projectId: string,
+    versionId: string
+) {
+    const tenant = await getActiveTenant(supabase);
+    if (!tenant) throw new Error("Unauthorized: No active tenant");
+    if (tenant.role === "member") throw new Error("Unauthorized: Member role is read-only");
+
+    await verifyProjectContext(supabase, projectId, tenant.tenantId);
+
+    const { data: version, error } = await supabase
+        .from("toc_versions")
+        .select("status")
+        .eq("id", versionId)
+        .eq("project_id", projectId)
+        .eq("tenant_id", tenant.tenantId)
+        .single();
+
+    if (error || !version) {
+        throw new Error("Unauthorized: ToC version context invalid");
+    }
+
+    if (version.status !== "DRAFT") {
+        throw new Error("Immutable: Cannot modify a published version");
+    }
+
+    return tenant;
+}
+
 export async function createTocDraft(
     projectId: string,
     snapshotId: string,
@@ -77,10 +114,7 @@ export async function addNode(
     description: string
 ) {
     const supabase = await createClient();
-    const tenant = await getActiveTenant(supabase);
-
-    if (!tenant) throw new Error("Unauthorized: No active tenant");
-    await verifyProjectContext(supabase, projectId, tenant.tenantId);
+    const tenant = await assertEditableContext(supabase, projectId, versionId);
 
     // Get existing nodes of this type in this version for row offset
     const { count } = await supabase
@@ -121,6 +155,33 @@ export async function addNode(
     return data;
 }
 
+export async function deleteNode(projectId: string, versionId: string, nodeId: string) {
+    const supabase = await createClient();
+    const tenant = await assertEditableContext(supabase, projectId, versionId);
+
+    // 1. Delete connected edges first (source or target)
+    const { error: eError } = await supabase
+        .from("toc_edges")
+        .delete()
+        .or(`source_node_id.eq.${nodeId},target_node_id.eq.${nodeId}`)
+        .eq("toc_version_id", versionId)
+        .eq("tenant_id", tenant.tenantId);
+
+    if (eError) throw new Error(`Error deleting node edges: ${eError.message}`);
+
+    // 2. Delete the node
+    const { error: nError } = await supabase
+        .from("toc_nodes")
+        .delete()
+        .eq("id", nodeId)
+        .eq("toc_version_id", versionId)
+        .eq("tenant_id", tenant.tenantId);
+
+    if (nError) throw new Error(`Error deleting node: ${nError.message}`);
+
+    revalidatePath(`/app/projects/${projectId}/toc`);
+}
+
 export async function updateNodePosition(
     projectId: string,
     versionId: string,
@@ -129,21 +190,7 @@ export async function updateNodePosition(
     pos_y: number
 ) {
     const supabase = await createClient();
-    const tenant = await getActiveTenant(supabase);
-
-    if (!tenant) throw new Error("Unauthorized: No active tenant");
-    await verifyProjectContext(supabase, projectId, tenant.tenantId);
-
-    // Verify version is DRAFT via join or separate check
-    const { data: version, error: vError } = await supabase
-        .from("toc_versions")
-        .select("status")
-        .eq("id", versionId)
-        .eq("tenant_id", tenant.tenantId)
-        .single();
-
-    if (vError || !version) throw new Error("Unauthorized: Version context invalid");
-    if (version.status !== "DRAFT") throw new Error("Immutable: Cannot move nodes in a published version");
+    const tenant = await assertEditableContext(supabase, projectId, versionId);
 
     // Update node
     const { error } = await supabase
@@ -169,10 +216,21 @@ export async function addEdge(
     edgeType: string = "CONTRIBUTES_TO"
 ) {
     const supabase = await createClient();
-    const tenant = await getActiveTenant(supabase);
+    const tenant = await assertEditableContext(supabase, projectId, versionId);
 
-    if (!tenant) throw new Error("Unauthorized: No active tenant");
-    await verifyProjectContext(supabase, projectId, tenant.tenantId);
+    if (sourceId === targetId) throw new Error("Validation: Source and target must be different");
+
+    // Check for existing edge to prevent duplicates
+    const { data: existing } = await supabase
+        .from("toc_edges")
+        .select("id, source_node_id, target_node_id, edge_type")
+        .eq("toc_version_id", versionId)
+        .eq("source_node_id", sourceId)
+        .eq("target_node_id", targetId)
+        .eq("tenant_id", tenant.tenantId)
+        .maybeSingle();
+
+    if (existing) return existing;
 
     const { data, error } = await supabase
         .from("toc_edges")
@@ -183,7 +241,7 @@ export async function addEdge(
             target_node_id: targetId,
             edge_type: edgeType
         })
-        .select()
+        .select("id, source_node_id, target_node_id, edge_type")
         .single();
 
     if (error) {
@@ -194,6 +252,22 @@ export async function addEdge(
     return data;
 }
 
+export async function deleteEdge(projectId: string, versionId: string, edgeId: string) {
+    const supabase = await createClient();
+    const tenant = await assertEditableContext(supabase, projectId, versionId);
+
+    const { error } = await supabase
+        .from("toc_edges")
+        .delete()
+        .eq("id", edgeId)
+        .eq("toc_version_id", versionId)
+        .eq("tenant_id", tenant.tenantId);
+
+    if (error) throw new Error(`Error deleting edge: ${error.message}`);
+
+    revalidatePath(`/app/projects/${projectId}/toc`);
+}
+
 export async function addNodeAssumption(
     projectId: string,
     versionId: string,
@@ -202,10 +276,7 @@ export async function addNodeAssumption(
     riskLevel: "LOW" | "MEDIUM" | "HIGH"
 ) {
     const supabase = await createClient();
-    const tenant = await getActiveTenant(supabase);
-
-    if (!tenant) throw new Error("Unauthorized: No active tenant");
-    await verifyProjectContext(supabase, projectId, tenant.tenantId);
+    const tenant = await assertEditableContext(supabase, projectId, versionId);
 
     const { data, error } = await supabase
         .from("toc_assumptions")
@@ -235,10 +306,7 @@ export async function addEdgeAssumption(
     riskLevel: "LOW" | "MEDIUM" | "HIGH"
 ) {
     const supabase = await createClient();
-    const tenant = await getActiveTenant(supabase);
-
-    if (!tenant) throw new Error("Unauthorized: No active tenant");
-    await verifyProjectContext(supabase, projectId, tenant.tenantId);
+    const tenant = await assertEditableContext(supabase, projectId, versionId);
 
     const { data, error } = await supabase
         .from("toc_edge_assumptions")

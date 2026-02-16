@@ -10,7 +10,8 @@ import ReactFlow, {
     NodeChange,
 } from "reactflow";
 import "reactflow/dist/style.css";
-import { updateNodePosition } from "./actions";
+import { updateNodePosition, addEdge, deleteEdge, deleteNode } from "./actions";
+import { Connection, addEdge as addRfEdge } from "reactflow";
 
 interface TocNode {
     id: string;
@@ -59,16 +60,37 @@ export default function TocGraphClient({
         }))
     );
 
-    const edges = React.useMemo<Edge[]>(
-        () => initialEdges.map((e) => ({
+    const [edges, setEdges] = React.useState<Edge[]>(
+        initialEdges.map((e) => ({
             id: e.id,
             source: e.source_node_id,
             target: e.target_node_id,
             animated: true,
             style: { stroke: "#4b5563" },
-        })),
-        [initialEdges]
+        }))
     );
+
+    // Sync state if initial props change (e.g. after refresh/navigation)
+    React.useEffect(() => {
+        setNodes(initialNodes.map((n) => ({
+            id: n.id,
+            type: "default",
+            data: { label: n.title },
+            position: { x: n.pos_x || 0, y: n.pos_y || 0 },
+            style: nodeStyles[n.node_type] || {},
+            draggable: isEditable,
+        })));
+    }, [initialNodes, isEditable]);
+
+    React.useEffect(() => {
+        setEdges(initialEdges.map((e) => ({
+            id: e.id,
+            source: e.source_node_id,
+            target: e.target_node_id,
+            animated: true,
+            style: { stroke: "#4b5563" },
+        })));
+    }, [initialEdges]);
 
     const onNodesChange = useCallback(
         (changes: NodeChange[]) => setNodes((nds) => applyNodeChanges(changes, nds)),
@@ -87,6 +109,74 @@ export default function TocGraphClient({
         [projectId, versionId, isEditable]
     );
 
+    const onConnect = useCallback(
+        async (params: Connection) => {
+            if (!isEditable || !params.source || !params.target) return;
+
+            // Optimistic update
+            const tempId = `temp-${Date.now()}`;
+            const newEdge: Edge = {
+                id: tempId,
+                source: params.source,
+                target: params.target,
+                animated: true,
+                style: { stroke: "#10b981" }, // Indicate it's new/saving
+            };
+
+            setEdges((eds) => addRfEdge(newEdge, eds));
+
+            try {
+                const result = await addEdge(projectId, versionId, params.source, params.target);
+                // Replace temp id with real id
+                setEdges((eds) =>
+                    eds.map((e) =>
+                        e.id === tempId
+                            ? { ...e, id: result.id, style: { stroke: "#4b5563" } }
+                            : e
+                    )
+                );
+            } catch (error) {
+                console.error("Failed to add edge:", error);
+                setEdges((eds) => eds.filter((e) => e.id !== tempId));
+            }
+        },
+        [projectId, versionId, isEditable]
+    );
+
+    const onEdgesDelete = useCallback(
+        async (deletedEdges: Edge[]) => {
+            if (!isEditable) return;
+            try {
+                for (const edge of deletedEdges) {
+                    if (edge.id.startsWith("temp-")) continue;
+                    await deleteEdge(projectId, versionId, edge.id);
+                }
+                setEdges((eds) => eds.filter((e) => !deletedEdges.find((de) => de.id === e.id)));
+            } catch (error) {
+                console.error("Failed to delete edge:", error);
+            }
+        },
+        [projectId, versionId, isEditable]
+    );
+
+    const onNodesDelete = useCallback(
+        async (deletedNodes: Node[]) => {
+            if (!isEditable) return;
+            try {
+                for (const node of deletedNodes) {
+                    await deleteNode(projectId, versionId, node.id);
+                }
+                setNodes((nds) => nds.filter((n) => !deletedNodes.find((dn) => dn.id === n.id)));
+                // Server action handles edge cleanup in DB, RF handles it in UI via onEdgesDelete if triggered, 
+                // but we filter locally for speed:
+                setEdges((eds) => eds.filter((e) => !deletedNodes.find((dn) => dn.id === e.source || dn.id === e.target)));
+            } catch (error) {
+                console.error("Failed to delete node:", error);
+            }
+        },
+        [projectId, versionId, isEditable]
+    );
+
     return (
         <div className="w-full h-[600px] bg-gray-900 rounded-xl border border-white/10 overflow-hidden relative mb-8">
             <ReactFlow
@@ -94,8 +184,13 @@ export default function TocGraphClient({
                 edges={edges}
                 onNodesChange={onNodesChange}
                 onNodeDragStop={onNodeDragStop}
+                onConnect={onConnect}
+                onEdgesDelete={onEdgesDelete}
+                onNodesDelete={onNodesDelete}
                 nodesDraggable={isEditable}
-                nodesConnectable={false}
+                nodesConnectable={isEditable}
+                elementsSelectable={isEditable}
+                deleteKeyCode={isEditable ? "Delete" : null}
                 fitView
             >
                 <Background color="#222" gap={20} />
