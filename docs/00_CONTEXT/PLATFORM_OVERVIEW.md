@@ -18,7 +18,7 @@ ESSET MEAL is a MEAL operating system that keeps strategy -> evidence -> decisio
 
 It gives CSOs a place to build a living Theory of Change, link indicators and evidence, track decisions, and export reports that remain stable as projects adapt.
 
-Reference source of truth: **ESSET_MEAL_MASTER_SPEC_FINAL_v1**.
+Reference source of truth: [Rules of Engagement](../00_RULES_OF_ENGAGEMENT.md), [Specification Canonical Map](../01_SPEC_CANONICAL_MAP.md), and [Architecture Master](../02_ARCHITECTURE_MASTER.md).
 
 ## What ESSET MEAL Is Not (Hard Boundaries)
 - Not a case management IMS.
@@ -46,3 +46,4 @@ Reference source of truth: **ESSET_MEAL_MASTER_SPEC_FINAL_v1**.
 Org and project isolation are non-negotiable: RLS-first, silent-by-default, and no existence leaks.
 
 See also: [Domain Map](./DOMAIN_MAP.md).
+

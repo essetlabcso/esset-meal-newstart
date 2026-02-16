@@ -27,6 +27,7 @@
 - Published ToC is read-only; edits happen only through a new draft version (copy-on-write).
 - Exports run only from snapshot-bound contexts; no non-reproducible "current state" exports.
 
-Reference source of truth: **ESSET_MEAL_MASTER_SPEC_FINAL_v1**.
+Reference source of truth: [Rules of Engagement](../00_RULES_OF_ENGAGEMENT.md), [Specification Canonical Map](../01_SPEC_CANONICAL_MAP.md), and [Architecture Master](../02_ARCHITECTURE_MASTER.md).
 
 See also: [Platform Overview](./PLATFORM_OVERVIEW.md).
+
