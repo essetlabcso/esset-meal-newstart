@@ -21,18 +21,25 @@ END $$;
 -- 3) Proof-Grade Simulation: First Org Creation
 -- This proves the recursion is gone by simulating the exact path of a new user.
 BEGIN;
-  -- Pick or create a user ID
-  -- We'll use a deterministic UUID for the simulation
-  SET LOCAL "request.jwt.claim.sub" = '99999999-9999-9999-9999-999999999999';
-  SET LOCAL "request.jwt.claims" = '{"sub": "99999999-9999-9999-9999-999999999999", "role": "authenticated"}';
-  SET LOCAL role authenticated;
+  -- Pick a real user ID for the simulation to satisfy FK constraints
+  DECLARE
+    _user_id uuid;
+  BEGIN
+    SELECT id INTO _user_id FROM auth.users LIMIT 1;
+    
+    IF _user_id IS NULL THEN
+      RAISE EXCEPTION 'No user found in auth.users for simulation';
+    END IF;
 
-  -- Attempt org creation
-  INSERT INTO public.organizations (name) VALUES ('Gate 17 Simulation Org');
+    PERFORM set_config('request.jwt.claim.sub', _user_id::text, true);
+    PERFORM set_config('request.jwt.claims', json_build_object('sub', _user_id, 'role', 'authenticated')::text, true);
 
-  -- Assertions
-  ASSERT (SELECT count(*) FROM public.organizations WHERE name = 'Gate 17 Simulation Org') = 1, 'Org insert failed or was invisible';
-  ASSERT (SELECT count(*) FROM public.org_memberships WHERE user_id = '99999999-9999-9999-9999-999999999999') = 1, 'Membership trigger failed';
+    -- Attempt org creation
+    INSERT INTO public.organizations (name) VALUES ('Gate 17 Simulation Org');
+
+    -- Assertions
+    ASSERT (SELECT count(*) FROM public.organizations WHERE name = 'Gate 17 Simulation Org') = 1, 'Org insert failed or was invisible';
+    ASSERT (SELECT count(*) FROM public.org_memberships WHERE user_id = _user_id AND org_id = (SELECT id FROM public.organizations WHERE name = 'Gate 17 Simulation Org')) = 1, 'Membership trigger failed';
   
   -- Confirm policy works for selection (triggers public.is_tenant_member)
   ASSERT (SELECT count(*) FROM public.org_memberships WHERE org_id = (SELECT id FROM public.organizations WHERE name = 'Gate 17 Simulation Org')) = 1, 'Select policy failed or recursive';

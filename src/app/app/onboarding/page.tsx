@@ -28,10 +28,10 @@ export default function OnboardingPage() {
                         />
                     </div>
                     <h1 className="text-2xl font-semibold tracking-tight text-gray-100" data-testid="onboarding-title">
-                        Create your organization
+                        Create your workspace
                     </h1>
                     <p className="text-sm text-gray-400 max-w-sm">
-                        You don&apos;t belong to any organization yet. Create your first workspace to start documenting impact.
+                        You don&apos;t belong to any workspace yet. Create your first workspace to start documenting impact.
                     </p>
                 </div>
 
@@ -39,7 +39,7 @@ export default function OnboardingPage() {
                     <form action={formAction} className="flex flex-col gap-6">
                         <div className="space-y-2">
                             <label htmlFor="name" className="text-sm font-medium text-gray-300 ml-1">
-                                Organization name
+                                Workspace name
                             </label>
                             <input
                                 id="name"
@@ -65,7 +65,7 @@ export default function OnboardingPage() {
                             data-testid="onboarding-submit"
                             className="w-full rounded-xl bg-emerald-600 px-4 py-2.5 font-semibold text-white hover:bg-emerald-500 active:bg-emerald-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-emerald-900/20"
                         >
-                            {pending ? "Creating workspace…" : "Create organization"}
+                            {pending ? "Creating workspace…" : "Create workspace"}
                         </button>
                     </form>
                 </div>
