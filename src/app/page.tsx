@@ -1,14 +1,43 @@
-/* eslint-disable @next/next/no-img-element */
 import Link from "next/link";
+import Image from "next/image";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "MEAL that works for the field — ESSET MEAL",
+  description: "Stop fighting with disconnected spreadsheets. ESSET MEAL connects your Theory of Change to real field data, giving CSOs the clarity to make decisions.",
+  openGraph: {
+    title: "MEAL that works for the field — ESSET MEAL",
+    description: "Connect your Theory of Change to real field data for decision clarity.",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "MEAL that works for the field — ESSET MEAL",
+    description: "Built for CSOs to manage complex programs with data that matters.",
+  },
+};
 
 export default function Home() {
   return (
     <div className="flex flex-col min-h-screen bg-neutral-950 text-neutral-100 selection:bg-emerald-500/30">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[100] focus:px-4 focus:py-2 focus:bg-emerald-600 focus:text-white focus:rounded-full focus:font-bold focus:shadow-2xl transition-all"
+      >
+        Skip to content
+      </a>
       {/* Header/Nav */}
       <header className="sticky top-0 z-50 w-full border-b border-white/5 bg-neutral-950/80 backdrop-blur-md">
         <div className="container mx-auto flex h-16 items-center justify-between px-4 sm:px-6">
           <div className="flex items-center gap-2">
-            <img src="/brand/esset-logo-header.svg" alt="ESSET MEAL Logo" className="h-8" />
+            <Image
+              src="/brand/esset-logo-header.svg"
+              alt="ESSET MEAL Logo"
+              width={140}
+              height={32}
+              className="h-8 w-auto"
+              priority
+            />
           </div>
           <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
             <Link href="#features" className="text-neutral-400 hover:text-white transition">Features</Link>
@@ -29,7 +58,7 @@ export default function Home() {
         </div>
       </header>
 
-      <main className="flex-1">
+      <main id="main-content" className="flex-1 outline-none" tabIndex={-1}>
         {/* Hero Section */}
         <section className="relative py-20 lg:py-32 overflow-hidden">
           <div className="container mx-auto px-4 sm:px-6 relative z-10">
@@ -110,7 +139,14 @@ export default function Home() {
                 </div>
               </div>
               <div className="flex-1 w-full max-w-lg aspect-square bg-neutral-900 border border-white/5 rounded-3xl p-8 flex flex-col items-center justify-center text-center">
-                <img src="/brand/esset-logo-full.svg" alt="Visual Branding" className="w-48 opacity-20 mb-8" />
+                <Image
+                  src="/brand/esset-logo-full.svg"
+                  alt=""
+                  width={192}
+                  height={192}
+                  className="w-48 h-auto opacity-20 mb-8"
+                  aria-hidden="true"
+                />
                 <p className="text-neutral-500 text-sm max-w-xs uppercase tracking-widest font-bold">Authenticated Dashboard Preview Coming Soon</p>
               </div>
             </div>
@@ -205,7 +241,13 @@ export default function Home() {
         <div className="container mx-auto px-4 sm:px-6">
           <div className="flex flex-col md:flex-row justify-between items-center gap-8">
             <div className="flex flex-col items-center md:items-start gap-4">
-              <img src="/brand/esset-logo-header.svg" alt="ESSET MEAL Logo" className="h-6 opacity-60" />
+              <Image
+                src="/brand/esset-logo-header.svg"
+                alt="ESSET MEAL"
+                width={105}
+                height={24}
+                className="h-6 w-auto opacity-60"
+              />
               <p className="text-xs text-neutral-500 font-medium uppercase tracking-[0.2em]">Built for impact, verified by data.</p>
             </div>
             <div className="flex gap-8 text-sm text-neutral-400 font-medium">

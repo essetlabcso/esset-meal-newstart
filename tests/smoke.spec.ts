@@ -4,9 +4,26 @@ test.describe('ESSET MEAL Smoke Tests', () => {
 
     test('landing page loads and has core messaging', async ({ page }) => {
         await page.goto('/');
-        await expect(page.locator('img[alt="ESSET MEAL Logo"]').first()).toBeVisible();
 
-        // Assert hero messaging (resilient matching)
+        // SEO/Metadata checks
+        await expect(page).toHaveTitle(/ESSET MEAL/i);
+        await expect(page).toHaveTitle(/MEAL.*field/i);
+
+        const metaDescription = page.locator('meta[name="description"]');
+        await expect(metaDescription).toHaveAttribute('content', /spreadsheet|CSO|decision/i);
+
+        // Accessibility checks
+        const skipLink = page.locator('a[href="#main-content"]');
+        await expect(skipLink).toBeAttached(); // present in DOM
+
+        // Tab through to focus skip link
+        await page.keyboard.press('Tab');
+        await expect(skipLink).toBeFocused();
+
+        // Logo check - Case insensitive alt match
+        await expect(page.locator('img[alt*="ESSET MEAL"]').first()).toBeVisible();
+
+        // Assert hero messaging
         await expect(page.getByTestId('hero-headline')).toContainText(/MEAL.*field/i);
 
         // Assert CTAs
@@ -19,11 +36,15 @@ test.describe('ESSET MEAL Smoke Tests', () => {
         await expect(secondaryCTA).toHaveAttribute('href', '/demo');
     });
 
-    test('demo page loads and shows steps', async ({ page }) => {
+    test('demo page loads and shows steps with proper metadata', async ({ page }) => {
         await page.goto('/demo');
+        await expect(page).toHaveTitle(/Product Demo/i);
         await expect(page.getByText('Product Demo Flow')).toBeVisible();
         await expect(page.getByText('Step 1')).toBeVisible();
         await expect(page.getByText('Authentication')).toBeVisible();
+
+        const skipLink = page.locator('a[href="#main-content"]');
+        await expect(skipLink).toBeAttached();
     });
 
     test('auth pages are reachable', async ({ page }) => {

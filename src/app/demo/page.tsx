@@ -1,4 +1,10 @@
 import Link from "next/link";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+    title: "Product Demo Flow — ESSET MEAL",
+    description: "Explore how ESSET MEAL works. From authentication to publishing a Theory of Change, see our platform in action.",
+};
 
 export default function DemoPage() {
     const steps = [
@@ -47,7 +53,13 @@ export default function DemoPage() {
     ];
 
     return (
-        <div className="min-h-screen bg-neutral-950 text-neutral-100">
+        <div className="min-h-screen bg-neutral-950 text-neutral-100 selection:bg-emerald-500/30">
+            <a
+                href="#main-content"
+                className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[100] focus:px-4 focus:py-2 focus:bg-emerald-600 focus:text-white focus:rounded-full focus:font-bold focus:shadow-2xl transition-all"
+            >
+                Skip to content
+            </a>
             <header className="border-b border-white/5 bg-neutral-950/80 backdrop-blur-md sticky top-0 z-50">
                 <div className="container mx-auto px-4 h-16 flex items-center justify-between">
                     <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition">
@@ -59,7 +71,7 @@ export default function DemoPage() {
                 </div>
             </header>
 
-            <main className="container mx-auto px-4 py-16 max-w-4xl">
+            <main id="main-content" className="container mx-auto px-4 py-16 max-w-4xl outline-none" tabIndex={-1}>
                 <div className="mb-16 text-center">
                     <h1 className="text-4xl font-bold mb-4">Product Demo Flow</h1>
                     <p className="text-neutral-400 text-lg">A step-by-step walkthrough of the ESSET MEAL capabilities.</p>
