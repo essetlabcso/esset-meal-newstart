@@ -41,7 +41,18 @@ This script provides a deterministic walkthrough of the ESSET MEAL application f
 - **Action**: In "Outgoing Connectors", add an Edge Assumption (e.g., "Stable Market", Risk: Medium).
 - **Expected**: Both node and edge assumptions appear in the list. Edge label `A:n` updates on the graph.
 
-### 6. Publishing
+### 6. Workspace Member Invitations
+- **Action**: Click "Workspaces" in the sidebar, then "Members".
+- **Action**: Enter a colleague's email and select "Admin" or "Member".
+- **Action**: Click "Generate Invite Link".
+- **Expected**: A copyable link appears.
+- **Action**: Log out and navigate to the generated link.
+- **Expected**: Redirect to Sign In (with redirect back to invite).
+- **Action**: Sign in as the invited user.
+- **Expected**: "Invitation Accepted!" screen appears. Click "Go to Workspace".
+- **Action**: Verify the user now has access to the workspace in `/app/workspaces`.
+
+### 7. Publishing
 - **Action**: Click "Publish" button in the header.
 - **Expected**: Version status changes to PUBLISHED. UI (add/delete/drag) becomes read-only.
 

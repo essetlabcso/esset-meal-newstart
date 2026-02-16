@@ -655,3 +655,47 @@ Gate 13 reconciled the repository truth by fixing drift in previous gate impleme
 ### Git Proof
 - Commit message: `Gate 13: reconcile truth + auth e2e harness + idempotent seed`
 - Branch: `main`
+
+## Gate 14: Workspace Members + Invitations — Walkthrough
+
+## Summary
+
+Gate 14 implemented a complete, tenant-scoped member management and invitation flow. This includes a new `org_invitations` table with RLS protection, security-definer RPCs for link generation and acceptance, and a robust UI for admins to manage their team without manual email configuration.
+
+## Files Created/Updated
+
+- `supabase/migrations/20260216140000_gate14_org_invites.sql`: Core schema, RLS, and RPCs (`create_org_invite`, `accept_org_invite`).
+- `src/app/app/workspaces/members/actions.ts`: Server actions for listing, creating, and revoking invitations.
+- `src/app/app/workspaces/members/page.tsx`: Team management UI.
+- `src/app/app/workspaces/members/MemberInviteForm.tsx`: Invitation generator component.
+- `src/app/auth/invite/page.tsx`: Invite acceptance handler with auto-auth-redirect.
+- `supabase/verify/gate14_verify.sql`: RPC and RLS logic verification.
+
+## Verification Outputs (SQL Proof)
+
+### 1. Table & RLS Status
+| table_name | relrowsecurity |
+|---|---|
+| org_invitations | true |
+
+### 2. RLS Policies
+| policyname | cmd | qual/with_check |
+|---|---|---|
+| org_inv_select_admin | SELECT | `is_org_admin(tenant_id)` |
+| org_inv_insert_admin | INSERT | `is_org_admin(tenant_id)` |
+| org_inv_delete_admin | DELETE | `is_org_admin(tenant_id)` |
+
+### 3. RPC Logic Proof
+- `create_org_invite`: Generates 32-byte raw token, stores SHA-256 hash. Returns link components.
+- `accept_org_invite`: Validates hash + expiry + email match. Idempotently upserts `org_memberships`. Marks accepted.
+
+## Quality Gate
+
+- `npm run lint` → **Exit 0 (Clean)**.
+- `npm run build` → **✓ Compiled successfully**.
+- `database.types.ts` → Manually synchronized with `org_invitations` and RPC signatures.
+
+## Git Proof
+
+- Commit message: `Gate 14: workspace members + invitations`
+- Branch: `main`
