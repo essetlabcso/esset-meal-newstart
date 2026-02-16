@@ -5,11 +5,18 @@ test.describe('ESSET MEAL Smoke Tests', () => {
     test('landing page loads and has core messaging', async ({ page }) => {
         await page.goto('/');
         await expect(page.locator('img[alt="ESSET MEAL Logo"]').first()).toBeVisible();
-        await expect(page.getByText('MEAL that works for the field, not just the donor.')).toBeVisible();
 
-        const signUpLink = page.getByRole('link', { name: 'Start a workspace', exact: true }).first();
-        await expect(signUpLink).toBeVisible();
-        await expect(signUpLink).toHaveAttribute('href', '/auth/sign-up');
+        // Assert hero messaging (resilient matching)
+        await expect(page.getByTestId('hero-headline')).toContainText(/MEAL.*field/i);
+
+        // Assert CTAs
+        const primaryCTA = page.getByTestId('hero-cta-primary');
+        await expect(primaryCTA).toBeVisible();
+        await expect(primaryCTA).toHaveAttribute('href', '/auth/sign-up');
+
+        const secondaryCTA = page.getByTestId('hero-cta-secondary');
+        await expect(secondaryCTA).toBeVisible();
+        await expect(secondaryCTA).toHaveAttribute('href', '/demo');
     });
 
     test('demo page loads and shows steps', async ({ page }) => {

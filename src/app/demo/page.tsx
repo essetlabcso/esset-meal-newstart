@@ -109,8 +109,10 @@ export default function DemoPage() {
                 </section>
             </main>
 
-            <footer className="py-12 border-t border-white/5 text-center text-xs text-neutral-600 uppercase tracking-widest font-bold">
-                ESSET MEAL — Building for impact.
+            <footer className="py-12 border-t border-white/5 text-center">
+                <p className="text-[10px] text-neutral-600 uppercase tracking-widest font-bold">
+                    © {new Date().getFullYear()} ESSET MEAL — Built for impact, verified by data.
+                </p>
             </footer>
         </div>
     );

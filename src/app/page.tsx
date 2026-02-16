@@ -34,7 +34,7 @@ export default function Home() {
         <section className="relative py-20 lg:py-32 overflow-hidden">
           <div className="container mx-auto px-4 sm:px-6 relative z-10">
             <div className="max-w-3xl">
-              <h1 className="text-4xl font-bold tracking-tight sm:text-6xl mb-6">
+              <h1 data-testid="hero-headline" className="text-4xl font-bold tracking-tight sm:text-6xl mb-6">
                 MEAL that works for the field, <span className="text-emerald-500 font-extrabold italic">not just the donor.</span>
               </h1>
               <p className="text-lg sm:text-xl text-neutral-400 leading-relaxed mb-10 max-w-2xl">
@@ -42,12 +42,14 @@ export default function Home() {
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
                 <Link
+                  data-testid="hero-cta-primary"
                   href="/auth/sign-up"
                   className="inline-flex h-12 items-center justify-center rounded-full bg-emerald-600 px-8 text-base font-bold text-white shadow-lg hover:bg-emerald-500 transition-all hover:scale-[1.02] active:scale-[0.98]"
                 >
                   Start a workspace
                 </Link>
                 <Link
+                  data-testid="hero-cta-secondary"
                   href="/demo"
                   className="inline-flex h-12 items-center justify-center rounded-full border border-white/10 bg-white/5 px-8 text-base font-bold text-white hover:bg-white/10 transition-all"
                 >
@@ -204,7 +206,7 @@ export default function Home() {
           <div className="flex flex-col md:flex-row justify-between items-center gap-8">
             <div className="flex flex-col items-center md:items-start gap-4">
               <img src="/brand/esset-logo-header.svg" alt="ESSET MEAL Logo" className="h-6 opacity-60" />
-              <p className="text-xs text-neutral-500 font-medium uppercase tracking-[0.2em]">Build for impact, verified by data.</p>
+              <p className="text-xs text-neutral-500 font-medium uppercase tracking-[0.2em]">Built for impact, verified by data.</p>
             </div>
             <div className="flex gap-8 text-sm text-neutral-400 font-medium">
               <Link href="/auth/sign-in" className="hover:text-emerald-500 transition">Sign in</Link>
