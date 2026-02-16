@@ -75,6 +75,7 @@ export default function TocGraphClient({
             labelBgBorderRadius: 4,
             labelBgStyle: { fill: "#1f2937", fillOpacity: 0.8 },
             style: { stroke: "#4b5563" },
+            data: { "testid": "edge-label" }
         }))
     );
 

@@ -630,3 +630,29 @@ Gate 11 enforced a "Quality Lock" on the repository by ensuring a warning-free l
 ### Git Proof
 - Commit message: `Gate 11: Quality lock (zero-warn lint + CI)`
 - Branch: `main`
+
+## Gate 12: Demo Readiness Pack (seed + script + smoke tests) — Walkthrough
+
+### Summary
+Gate 12 focused on making the ESSET MEAL application demoable and ensuring reliable automated verification of the critical user paths. It introduced a deterministic demo script, idempotent seed helpers, and Playwright smoke tests.
+
+### Files Created/Updated
+- `docs/demo/DEMO_SCRIPT.md`: Step-by-step walkthrough of the product for stakeholders.
+- `supabase/seed/demo_seed.sql`: Idempotent SQL script to populate a workspace with demo projects, ToC graphs, and snapshots.
+- `tests/smoke.spec.ts`: Playwright smoke tests covering auth routing, landing page, and UI hooks.
+- `playwright.config.ts`: Automated test runner configuration.
+- `src/app/app/projects/[projectId]/toc/page.tsx` & `TocGraphClient.tsx`: Added `data-testid` hooks for stable testing.
+- `package.json`: Added `test:e2e` script.
+
+### Quality Gate
+- `npm run lint` → **Exit 0 (0 warnings)**.
+- `npm run build` → **✓ Compiled successfully**.
+- `npm run test:e2e` → **✓ 3 passed, 1 skipped (auth-dependent skipped)**.
+
+### Resource Locations
+- **Demo Script**: `docs/demo/DEMO_SCRIPT.md`
+- **Seed File**: `supabase/seed/demo_seed.sql`
+
+### Git Proof
+- Commit message: `Gate 12: Demo readiness pack (seed + script + smoke tests)`
+- Branch: `main`

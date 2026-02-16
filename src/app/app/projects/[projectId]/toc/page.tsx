@@ -204,7 +204,10 @@ export default async function TocBuilderPage({ params, searchParams }: TocBuilde
                                     "use server"
                                     await publishToc(projectId, activeVersion.id);
                                 }}>
-                                    <button className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-600 transition">
+                                    <button
+                                        data-testid="publish-button"
+                                        className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-600 transition"
+                                    >
                                         Publish
                                     </button>
                                 </form>
@@ -356,8 +359,8 @@ export default async function TocBuilderPage({ params, searchParams }: TocBuilde
                                                                         <span className="font-black">A:</span>
                                                                         <span>{ass.assumption_text}</span>
                                                                         <span className={`px-1 rounded-[2px] text-[7px] font-bold ${ass.risk_level === 'HIGH' ? 'bg-red-500/10 text-red-500' :
-                                                                                ass.risk_level === 'MEDIUM' ? 'bg-amber-500/10 text-amber-500' :
-                                                                                    'bg-emerald-500/10 text-emerald-500'
+                                                                            ass.risk_level === 'MEDIUM' ? 'bg-amber-500/10 text-amber-500' :
+                                                                                'bg-emerald-500/10 text-emerald-500'
                                                                             }`}>
                                                                             {ass.risk_level}
                                                                         </span>
