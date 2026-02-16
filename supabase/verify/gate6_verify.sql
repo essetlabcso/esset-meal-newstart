@@ -1,34 +1,41 @@
--- Gate 6 Verification SQL
--- 1) Check column existence
+-- Gate 6 Verification SQL (Proof-Grade)
+-- Path: supabase/verify/gate6_verify.sql
+
+SELECT '--- Phase 1: Column Presence ---' as msg;
 SELECT column_name, data_type, is_nullable
 FROM information_schema.columns
-WHERE table_name = 'profiles' AND column_name = 'active_tenant_id';
+WHERE table_schema = 'public' 
+  AND table_name = 'profiles' 
+  AND column_name = 'active_tenant_id';
 
--- 2) Check FK constraint
+SELECT '--- Phase 2: Foreign Key Definition ---' as msg;
 SELECT
-    tc.constraint_name, 
-    tc.table_name, 
-    kcu.column_name, 
-    ccu.table_name AS foreign_table_name, 
-    ccu.column_name AS foreign_column_name 
-FROM 
-    information_schema.table_constraints AS tc 
-    JOIN information_schema.key_column_usage AS kcu
-      ON tc.constraint_name = kcu.constraint_name
-      AND tc.table_schema = kcu.table_schema
-    JOIN information_schema.constraint_column_usage AS ccu
-      ON ccu.constraint_name = tc.constraint_name
-      AND ccu.table_schema = tc.table_schema
-WHERE tc.constraint_type = 'FOREIGN KEY' 
-  AND tc.table_name = 'profiles' 
-  AND kcu.column_name = 'active_tenant_id';
+    conname as constraint_name,
+    pg_get_constraintdef(c.oid) as constraint_def
+FROM pg_constraint c
+JOIN pg_namespace n ON n.oid = c.connamespace
+WHERE n.nspname = 'public'
+  AND conname = 'profiles_active_tenant_id_fkey';
 
--- 3) Check index existence
+SELECT '--- Phase 3: Index Consistency ---' as msg;
 SELECT indexname, indexdef
 FROM pg_indexes
-WHERE tablename = 'profiles' AND indexname = 'idx_profiles_active_tenant_id';
+WHERE schemaname = 'public' 
+  AND tablename = 'profiles' 
+  AND indexname = 'idx_profiles_active_tenant_id';
 
--- 4) Verify Policy (Existence and definition)
-SELECT policyname, permissive, roles, cmd, qual, with_check
+SELECT '--- Phase 4: Active Tenant Selection Policy ---' as msg;
+SELECT policyname, cmd, qual, with_check
 FROM pg_policies
-WHERE tablename = 'profiles' AND policyname = 'profiles_update_own';
+WHERE schemaname = 'public' 
+  AND tablename = 'profiles' 
+  AND policyname = 'profiles_update_own';
+
+SELECT '--- Phase 5: RLS Status ---' as msg;
+SELECT relname, relrowsecurity
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE n.nspname = 'public' 
+  AND relname = 'profiles';
+
+SELECT '--- Verification Complete ---' as msg;

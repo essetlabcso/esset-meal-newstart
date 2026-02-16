@@ -1,10 +1,24 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { listUserTenants, setActiveTenant } from "@/lib/tenant";
 
 export default async function WorkspacesPage() {
     const supabase = await createClient();
+
+    // Auth check (layout usually handles this, but instruction says "requires auth")
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+        redirect("/auth/sign-in");
+    }
+
     const tenants = await listUserTenants(supabase);
+
+    // If exactly 1 partnership exists, getActiveTenant in layout will resolve/persist it,
+    // but for consistency we redirect here too.
+    if (tenants.length === 1) {
+        redirect("/app");
+    }
 
     async function handleSelectWorkspace(formData: FormData) {
         "use server";
@@ -66,12 +80,12 @@ export default async function WorkspacesPage() {
                     {tenants.length === 0 && (
                         <div className="text-center py-12 bg-white/5 border border-dashed border-white/10 rounded-xl">
                             <p className="text-gray-500">No workspaces found.</p>
-                            <a
+                            <Link
                                 href="/app/onboarding"
                                 className="mt-4 inline-block text-emerald-400 text-sm font-medium hover:underline"
                             >
                                 Create your first workspace
-                            </a>
+                            </Link>
                         </div>
                     )}
                 </div>

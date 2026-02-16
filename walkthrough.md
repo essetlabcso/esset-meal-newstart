@@ -356,50 +356,53 @@ toc_versions_one_draft_per_project | CREATE UNIQUE INDEX ... ON toc_versions (pr
 - `supabase gen types typescript --linked` → `src/lib/database.types.ts` regenerated
 
 
-## Gate 6: Active Tenant (Workspace) Selection — Walkthrough
+## Gate 6.2: Verification Alignment + Tenant Resolver Consistency — Walkthrough
 
 ## Summary
-Gate 6 implemented deterministic workspace persistence via `profiles.active_tenant_id`, providing a dedicated workspace selection UI and hardened RLS policies to ensure users can only select tenants they are members of.
 
-## DB Migration result
+Gate 6.2 aligned the tenant resolver logic with the intended Gate 6 state, ensuring stable sorting, membership validation, and auto-persistence for single-membership users. Verification scripts were upgraded to "proof-grade" standards and made compatible with the Supabase MCP SQL runner (removing psql dependencies).
 
-```bash
-Applying migration 20260215215401_gate6_1_profiles_active_tenant_rls.sql...
-Finished supabase db push.
-```
+## Changes Made
+
+### 1. Tenant Resolver (`src/lib/tenant.ts`)
+- **Stable Sorting**: `listUserTenants` now sorts by role priority (`owner` > `admin` > `member`) and then by creation date.
+- **Auto-Persistence**: `getActiveTenant` now automatically sets and persists `active_tenant_id` for users with exactly one membership if not already set.
+- **Membership Validation**: `getActiveTenant` clears `active_tenant_id` if the user is no longer a member of that organization.
+- **RLS-First Updates**: `setActiveTenant` simplified to rely on DB-level RLS `WITH CHECK` for membership validation.
+
+### 2. Workspace Selector (`src/app/app/workspaces/page.tsx`)
+- **Auto-Redirect**: Users with exactly one membership are now automatically redirected to `/app` to avoid unnecessary selection steps.
+- **Server Action Validation**: Updated `handleSelectWorkspace` to correctly invoke `setActiveTenant` and handle redirection.
+
+### 3. Proof-Grade Verification (`supabase/verify/`)
+- **MCP-Safe**: Removed `\set ON_ERROR_STOP` and other psql meta-commands.
+- **Gate 5.1 Proofs**: Added deep inspection of policies for all ToC tables to verify `tenant_id` qualification in `qual` and `with_check`.
+- **Gate 6 Proofs**: Verified `profiles.active_tenant_id` column, FK constraint definition, index existence, and the update-own policy logic.
 
 ## Verification Outputs (SQL Proof)
 
-### Profile Column & Constraint
-| column_name | data_type | is_nullable |
-|---|---|---|
-| active_tenant_id | uuid | YES |
+### ToC Policy Consistency (Gate 5.1 Proof)
+| tablename | policyname | cmd | qual/with_check |
+|---|---|---|---|
+| analysis_snapshots | select | SELECT | `is_tenant_member(tenant_id)` |
+| toc_versions | select | SELECT | `is_tenant_member(tenant_id)` |
+| toc_nodes | update | UPDATE | `(is_tenant_member(tenant_id) AND ...)` |
+| toc_edges | insert | INSERT | `(is_tenant_member(tenant_id) AND ...)` |
 
-### Foreign Key & Index
-| constraint_name | foreign_table_name | column_name |
-|---|---|---|
-| profiles_active_tenant_id_fkey | organizations | active_tenant_id |
-
-| indexname | indexdef |
+### Active Tenant Proof (Gate 6 Proof)
+| Proof | Result |
 |---|---|
-| idx_profiles_active_tenant_id | CREATE INDEX idx_profiles_active_tenant_id ON public.profiles USING btree (active_tenant_id) |
-
-### RLS Policy Hardening
-| policyname | cmd | with_check |
-|---|---|---|
-| profiles_update_own | UPDATE | `((id = auth.uid()) AND ((active_tenant_id IS NULL) OR is_tenant_member(active_tenant_id)))` |
-
-## App Layer Implementation
-- **Tenant Utility**: `src/lib/tenant.ts` updated with auto-resolution and persistence logic in `getActiveTenant`.
-- **Workspace Selector**: `src/app/app/workspaces/page.tsx` created for manual tenant switching.
-- **App Layout**: `src/app/app/layout.tsx` enforces active tenant for any authenticated user with memberships.
+| Column | `active_tenant_id` (uuid, nullable) |
+| FK | `FOREIGN KEY (active_tenant_id) REFERENCES organizations(id) ON DELETE SET NULL` |
+| Index | `idx_profiles_active_tenant_id` (btree) |
+| Policy | `profiles_update_own` WITH CHECK: `((id = auth.uid()) AND ((active_tenant_id IS NULL) OR is_tenant_member(active_tenant_id)))` |
+| RLS | enabled on `profiles` |
 
 ## Proof of Build & Lint
-- `npm run lint` → Exit 0 (Clean)
-- `npm run build` → ✓ Compiled successfully (Next.js 16.1.6 Turbopack)
-- `supabase gen types typescript --linked` → `src/lib/database.types.ts` updated with `active_tenant_id`.
+- `supabase gen types typescript --linked` → Regenerated `database.types.ts`.
+- `npm run lint` → **Exit 0 (Clean)**.
+- `npm run build` → **✓ Compiled successfully (Next.js 16.1.6 Turbopack)**.
 
-## Security & Compliance
-- **Server Actions**: Workspace selection uses server actions to update `profiles.active_tenant_id`.
-- **Membership Check**: `setActiveTenant` verifies membership server-side; RLS reinforces this at the DB level.
-- **Deterministic Resolution**: `getActiveTenant` ensures a single workspace is auto-selected or the user is forced to choose.
+## Git Status
+- `git status` → Working tree aligned.
+- `git log` → History reflects Gate 6.2 incremental progress.

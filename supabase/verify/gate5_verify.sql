@@ -1,8 +1,6 @@
 -- Gate 5 / 5.1 Verification Script (Proof-Grade)
 -- Path: supabase/verify/gate5_verify.sql
 
-\set ON_ERROR_STOP on
-
 SELECT '--- Phase 1: Table Presence ---' as msg;
 SELECT table_name 
 FROM information_schema.tables 
