@@ -340,27 +340,32 @@ export default async function TocBuilderPage({ params, searchParams }: TocBuilde
 
                                         {/* Outgoing Edges */}
                                         <div className="mt-4 space-y-2">
-                                            <h5 className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Outgoing Edges</h5>
+                                            <div className="flex items-center justify-between">
+                                                <h5 className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Outgoing Connectors</h5>
+                                            </div>
+
                                             {edges?.filter(e => e.source_node_id === node.id).map(edge => {
                                                 const target = nodes?.find(n => n.id === edge.target_node_id);
                                                 return (
-                                                    <div key={edge.id} className="bg-white/5 border border-white/5 rounded-lg p-3 space-y-3">
+                                                    <div key={edge.id} className="bg-white/5 border border-white/5 rounded-lg p-3 space-y-3 relative group/edge">
                                                         <div className="flex items-center justify-between">
-                                                            <div className="text-[10px] text-gray-400">
-                                                                <span className="font-bold">→</span> {target?.title || edge.target_node_id.slice(0, 4)}
+                                                            <div className="text-[10px] text-gray-400 flex items-center space-x-2">
+                                                                <span className="font-bold text-emerald-500/50">→</span>
+                                                                <span className="font-bold text-gray-300">{target?.title || "Unknown Node"}</span>
+                                                                <span className="text-[8px] opacity-30 tracking-tighter">({edge.edge_type})</span>
                                                             </div>
                                                         </div>
 
                                                         {/* Edge Assumptions */}
-                                                        <div className="space-y-1.5">
+                                                        <div className="space-y-1.5 pl-2 border-l border-white/10">
                                                             {edge.toc_edge_assumptions?.map((ass) => (
                                                                 <div key={ass.id} className="text-[9px] bg-amber-500/5 text-amber-500/80 p-2 rounded border border-amber-500/10 flex items-start justify-between group/ass">
-                                                                    <div className="flex items-start space-x-2">
-                                                                        <span className="font-black">A:</span>
-                                                                        <span>{ass.assumption_text}</span>
-                                                                        <span className={`px-1 rounded-[2px] text-[7px] font-bold ${ass.risk_level === 'HIGH' ? 'bg-red-500/10 text-red-500' :
-                                                                            ass.risk_level === 'MEDIUM' ? 'bg-amber-500/10 text-amber-500' :
-                                                                                'bg-emerald-500/10 text-emerald-500'
+                                                                    <div className="flex items-start space-x-2 pr-2">
+                                                                        <span className="font-black text-[8px] opacity-40">ASS:</span>
+                                                                        <span className="leading-tight">{ass.assumption_text}</span>
+                                                                        <span className={`px-1 rounded-[2px] text-[7px] font-black ${ass.risk_level === 'HIGH' ? 'bg-red-500/20 text-red-500' :
+                                                                                ass.risk_level === 'MEDIUM' ? 'bg-amber-500/20 text-amber-500' :
+                                                                                    'bg-emerald-500/20 text-emerald-500'
                                                                             }`}>
                                                                             {ass.risk_level}
                                                                         </span>
@@ -369,10 +374,10 @@ export default async function TocBuilderPage({ params, searchParams }: TocBuilde
                                                                         <form action={async () => {
                                                                             "use server"
                                                                             await deleteEdgeAssumption(projectId, activeVersion.id, ass.id);
-                                                                        }} className="opacity-0 group-hover/ass:opacity-100 transition">
-                                                                            <button className="text-red-500 hover:text-red-400">
+                                                                        }} className="opacity-0 group-hover/ass:opacity-100 transition shrink-0">
+                                                                            <button className="text-red-500/50 hover:text-red-500 transition-colors">
                                                                                 <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
                                                                                 </svg>
                                                                             </button>
                                                                         </form>
@@ -385,26 +390,27 @@ export default async function TocBuilderPage({ params, searchParams }: TocBuilde
                                                                     "use server"
                                                                     const txt = formData.get("text") as string;
                                                                     const risk = formData.get("risk") as "LOW" | "MEDIUM" | "HIGH";
+                                                                    if (!txt) return;
                                                                     await addEdgeAssumption(projectId, activeVersion.id, edge.id, txt, risk);
-                                                                }} className="flex items-center gap-2">
+                                                                }} className="flex items-center gap-2 pt-1">
                                                                     <input
                                                                         name="text"
                                                                         required
-                                                                        placeholder="Add edge assumption..."
-                                                                        className="flex-1 bg-transparent border-b border-white/10 text-[9px] text-gray-400 py-1 outline-none focus:border-emerald-500"
+                                                                        placeholder="New edge assumption..."
+                                                                        className="flex-1 bg-transparent border-b border-white/5 text-[9px] text-gray-500 py-1 outline-none focus:border-amber-500/50 transition-colors"
                                                                     />
                                                                     <select
                                                                         name="risk"
                                                                         defaultValue="MEDIUM"
-                                                                        className="bg-transparent text-[8px] text-gray-500 outline-none"
+                                                                        className="bg-transparent text-[8px] text-gray-500 outline-none cursor-pointer"
                                                                     >
                                                                         <option value="LOW" className="bg-gray-900">LOW</option>
                                                                         <option value="MEDIUM" className="bg-gray-900">MED</option>
                                                                         <option value="HIGH" className="bg-gray-900">HIGH</option>
                                                                     </select>
-                                                                    <button className="text-emerald-500 hover:text-emerald-400">
+                                                                    <button className="text-amber-500/50 hover:text-amber-500 transition-colors">
                                                                         <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
                                                                         </svg>
                                                                     </button>
                                                                 </form>
@@ -414,7 +420,7 @@ export default async function TocBuilderPage({ params, searchParams }: TocBuilde
                                                 );
                                             })}
                                             {edges?.filter(e => e.source_node_id === node.id).length === 0 && (
-                                                <div className="text-[9px] text-gray-600 italic">No outgoing edges.</div>
+                                                <div className="text-[9px] text-gray-600 italic">No outgoing connectors established.</div>
                                             )}
                                         </div>
                                     </div>

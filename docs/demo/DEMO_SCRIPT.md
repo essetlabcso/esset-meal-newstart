@@ -15,37 +15,37 @@ This script provides a deterministic walkthrough of the ESSET MEAL application f
 - **Action**: Sign in at `/auth/sign-in`.
 - **Expected**: Redirect to `/app/onboarding` (first time) or `/app/workspaces`.
 
-### 2. Workspace & Project
-- **Action**: Create a new Workspace (Tenant).
-- **Expected**: Redirect to `/app` (Dashboard).
-- **Action**: Navigate to **Projects** -> **New Project**. Create "Demo Project".
-- **Expected**: Project appears in the list. Click to open.
+### 2. Workspace & Project Creation
+- **Action**: Onboarding: Create a "Demo Organization".
+- **Expected**: Redirect to `/app/workspaces`.
+- **Action**: Enter organization.
+- **Action**: Create a new project: "Food Security Analysis 2026".
+- **Expected**: Project card appears.
 
-### 3. Theory of Change (Visual Builder)
-- **Action**: Navigate to the **Theory of Change** tab.
-- **Action**: Select a snapshot (if seeded) or create a fresh ToC Draft.
-- **Action**: Add a **GOAL** node (e.g., "Reduced Food Waste").
-- **Action**: Add an **OUTCOME** node (e.g., "Community Composting Active").
-- **Action**: Drag a connection from Outcome to Goal.
-- **Expected**: A line appears connecting the nodes.
+### 3. Analysis Snapshot
+- **Action**: Click the project -> "Analysis" tab.
+- **Action**: Click "New Snapshot".
+- **Action**: Fill out the situational analysis (Problem, Stakeholders).
+- **Action**: Click "Save Snapshot".
+- **Expected**: Snapshot appears in the list.
 
-### 4. Assumptions
-- **Action**: On the "Community Composting Active" node, add a **Node Assumption** (e.g., "Community is willing to participate").
-- **Action**: In the "Outgoing Edges" list below the node, find the edge to "Reduced Food Waste".
-- **Action**: Add an **Edge Assumption** (e.g., "Composting directly impacts local waste volume", Risk: High).
-- **Expected**: Both assumptions appear in the UI.
+### 4. Theory of Change (ToC) Builder
+- **Action**: Click "ToC" tab.
+- **Action**: In the "New Draft" section, select the snapshot and click "New Draft".
+- **Expected**: Visual Graph Builder appears with an empty or cloned canvas.
 
-### 5. Publishing
-- **Action**: Click the **Publish** button in the header.
-- **Expected**: Version status changes from `DRAFT` to `PUBLISHED`. Mutations (add/delete/drag) are now disabled.
+### 5. Node & Edge Management
+- **Action**: Use the "Add Node" sidebar to create a GOAL node.
+- **Action**: Drag handles in the graph to connect an OUTCOME to the GOAL.
+- **Action**: Click the GOAL node card below.
+- **Action**: In "Outgoing Connectors", add an Edge Assumption (e.g., "Stable Market", Risk: Medium).
+- **Expected**: Both node and edge assumptions appear in the list. Edge label `A:n` updates on the graph.
 
-### 6. Analysis Snapshot
-- **Action**: Navigate to the **Analysis** tab.
-- **Action**: Click **New Analysis Snapshot**.
-- **Action**: Fill in the situational analysis form and save.
-- **Expected**: Snapshot appears in the history. Clicking it shows the detail view.
+### 6. Publishing
+- **Action**: Click "Publish" button in the header.
+- **Expected**: Version status changes to PUBLISHED. UI (add/delete/drag) becomes read-only.
 
 ## Troubleshooting
 - **404 Not Found**: Ensure you are logged in and have an active tenant. Use `/app/workspaces` to reset context.
 - **Read-Only Mode**: Check if you are a "Member" (must be owner/admin to edit) or if the version is "Published".
-- **Graph Not Saving**: Ensure the version ID in the URL matches a `DRAFT` version.
+- **Graph Not Saving**: Ensure the version ID in the URL matches a `DRAFT` version and you have owner/admin permissions.

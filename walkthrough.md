@@ -590,15 +590,10 @@ Snapshots store a structured JSON object with the following keys:
 Gate 10 made edge assumptions first-class citizens in the Theory of Change UI. It enabled viewing, adding, and deleting assumptions specifically for outgoing edges of each node, with strict role and draft status enforcement. Edge labels in the graph view now also visualize assumption counts.
 
 ### Files Created/Updated
-- `src/app/app/projects/[projectId]/toc/actions.ts`: Added `deleteEdgeAssumption` server action.
+- `src/app/app/projects/[projectId]/toc/actions.ts`: Added `deleteEdgeAssumption` server action with draft immutability checks.
 - `src/app/app/projects/[projectId]/toc/page.tsx`: Expanded Outgoing Edges UI with inline management for assumptions.
 - `src/app/app/projects/[projectId]/toc/TocGraphClient.tsx`: Updated graph edges to display assumption counts (e.g., `A:3`).
 - `supabase/verify/gate10_verify.sql`: Database verification script for edge assumptions RLS.
-
-### Verification Outputs (SQL Proof)
-- **RLS Enabled**: `toc_edge_assumptions` (relrowsecurity: true).
-- **Policies**: Verified presence of specific INSERT/SELECT/UPDATE/DELETE policies with tenant and draft status gating.
-- **Blanket Policies**: **0** (No `FOR ALL` policies).
 
 ### Quality Gate
 - `npm run lint` → **Exit 0 (Clean)**.
@@ -614,45 +609,49 @@ Gate 10 made edge assumptions first-class citizens in the Theory of Change UI. I
 Gate 11 enforced a "Quality Lock" on the repository by ensuring a warning-free lint state and establishing a GitHub Actions CI workflow for automated verification of future changes.
 
 ### Files Created/Updated
-- `src/app/app/projects/analysis/[snapshotId]/page.tsx`: Fixed unused variable warning.
 - `package.json`: Updated `lint` script to enforce zero warnings (`--max-warnings 0`).
 - `.github/workflows/ci.yml`: Created a GitHub Actions workflow for lint + build.
-
-### Quality Gate
-- `npm run lint` → **Exit 0 (0 warnings)**.
-- `npm run build` → **✓ Compiled successfully**.
 
 ### CI Configuration
 - **Path**: `.github/workflows/ci.yml`
 - **Triggers**: `push` to `main`, `pull_request` to `main`.
-- **Steps**: Checkout, Node 20 Setup, `npm ci`, `npm run lint`, `npm run build`.
 
 ### Git Proof
 - Commit message: `Gate 11: Quality lock (zero-warn lint + CI)`
 - Branch: `main`
 
-## Gate 12: Demo Readiness Pack (seed + script + smoke tests) — Walkthrough
+## Gate 12: Demo Readiness Pack — Walkthrough
 
 ### Summary
-Gate 12 focused on making the ESSET MEAL application demoable and ensuring reliable automated verification of the critical user paths. It introduced a deterministic demo script, idempotent seed helpers, and Playwright smoke tests.
+Gate 12 introduced the initial demo infrastructure, including basic smoke tests and seed scripts. Note: This gate's seed idempotency was later refined in Gate 13.
 
 ### Files Created/Updated
-- `docs/demo/DEMO_SCRIPT.md`: Step-by-step walkthrough of the product for stakeholders.
-- `supabase/seed/demo_seed.sql`: Idempotent SQL script to populate a workspace with demo projects, ToC graphs, and snapshots.
-- `tests/smoke.spec.ts`: Playwright smoke tests covering auth routing, landing page, and UI hooks.
-- `playwright.config.ts`: Automated test runner configuration.
-- `src/app/app/projects/[projectId]/toc/page.tsx` & `TocGraphClient.tsx`: Added `data-testid` hooks for stable testing.
-- `package.json`: Added `test:e2e` script.
-
-### Quality Gate
-- `npm run lint` → **Exit 0 (0 warnings)**.
-- `npm run build` → **✓ Compiled successfully**.
-- `npm run test:e2e` → **✓ 3 passed, 1 skipped (auth-dependent skipped)**.
-
-### Resource Locations
-- **Demo Script**: `docs/demo/DEMO_SCRIPT.md`
-- **Seed File**: `supabase/seed/demo_seed.sql`
+- `docs/demo/DEMO_SCRIPT.md`: Initial demo walkthrough.
+- `playwright.config.ts`: Initial Playwright setup.
+- `tests/smoke.spec.ts`: Unauthenticated smoke tests.
 
 ### Git Proof
 - Commit message: `Gate 12: Demo readiness pack (seed + script + smoke tests)`
+
+## Gate 13: Truth Reconciliation & Complete E2E — Walkthrough
+
+### Summary
+Gate 13 reconciled the repository truth by fixing drift in previous gate implementations. It completed the Edge Assumptions UX, made the demo seeding truly idempotent, and established a robust authenticated E2E test harness.
+
+### Files Created/Updated
+- `src/app/app/projects/[projectId]/toc/page.tsx`: Refined Outgoing Connectors UI with target titles and inline Management.
+- `supabase/seed/demo_seed.sql`: Re-implemented as a truly idempotent SQL script with deterministic lookup.
+- `playwright.config.ts`: Restructured to support `setup` and `auth-smoke` projects.
+- `tests/auth.setup.ts`: New setup script using Supabase Admin API to create/confirm test users.
+- `tests/auth.smoke.spec.ts`: New authenticated full-path smoke test.
+- `docs/dev/TESTING_E2E.md`: New developer guide for E2E testing environment and execution.
+- `docs/demo/DEMO_SCRIPT.md`: Synchronized with current UI reality.
+
+### Quality Gate
+- `npm run lint` → **Exit 0 (Clean)**.
+- `npm run build` → **✓ Compiled successfully**.
+- `npm run test:e2e` → **✓ 4 passed (including authenticated path)**.
+
+### Git Proof
+- Commit message: `Gate 13: reconcile demo truth + edge assumptions UX + auth e2e harness`
 - Branch: `main`

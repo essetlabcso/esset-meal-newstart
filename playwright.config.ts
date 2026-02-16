@@ -26,9 +26,19 @@ export default defineConfig({
 
     /* Configure projects for major browsers */
     projects: [
+        { name: 'setup', testMatch: /.*\.setup\.ts/ },
         {
-            name: 'chromium',
+            name: 'chromium-unauth',
             use: { ...devices['Desktop Chrome'] },
+            testIgnore: /.*auth\.smoke\.spec\.ts/, // We will split them
+        },
+        {
+            name: 'chromium-auth',
+            use: {
+                ...devices['Desktop Chrome'],
+            },
+            dependencies: ['setup'],
+            testMatch: /.*auth\.smoke\.spec\.ts/,
         },
     ],
 
