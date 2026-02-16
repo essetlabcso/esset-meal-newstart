@@ -25,6 +25,7 @@ interface TocEdge {
     id: string;
     source_node_id: string;
     target_node_id: string;
+    toc_edge_assumptions?: { id: string }[];
 }
 
 interface TocGraphClientProps {
@@ -66,6 +67,13 @@ export default function TocGraphClient({
             source: e.source_node_id,
             target: e.target_node_id,
             animated: true,
+            label: e.toc_edge_assumptions && e.toc_edge_assumptions.length > 0
+                ? `A:${e.toc_edge_assumptions.length}`
+                : undefined,
+            labelStyle: { fill: "#f59e0b", fontWeight: 700, fontSize: "10px" },
+            labelBgPadding: [4, 2],
+            labelBgBorderRadius: 4,
+            labelBgStyle: { fill: "#1f2937", fillOpacity: 0.8 },
             style: { stroke: "#4b5563" },
         }))
     );
@@ -88,6 +96,13 @@ export default function TocGraphClient({
             source: e.source_node_id,
             target: e.target_node_id,
             animated: true,
+            label: e.toc_edge_assumptions && e.toc_edge_assumptions.length > 0
+                ? `A:${e.toc_edge_assumptions.length}`
+                : undefined,
+            labelStyle: { fill: "#f59e0b", fontWeight: 700, fontSize: "10px" },
+            labelBgPadding: [4, 2],
+            labelBgBorderRadius: 4,
+            labelBgStyle: { fill: "#1f2937", fillOpacity: 0.8 },
             style: { stroke: "#4b5563" },
         })));
     }, [initialEdges]);

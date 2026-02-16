@@ -583,3 +583,27 @@ Snapshots store a structured JSON object with the following keys:
 
 - `git status` → Working tree aligned.
 - `git log` → Gate 9: Analysis snapshots UI + ToC snapshot selection.
+
+## Gate 10: Edge Assumptions UX (view/add/delete) — Walkthrough
+
+### Summary
+Gate 10 made edge assumptions first-class citizens in the Theory of Change UI. It enabled viewing, adding, and deleting assumptions specifically for outgoing edges of each node, with strict role and draft status enforcement. Edge labels in the graph view now also visualize assumption counts.
+
+### Files Created/Updated
+- `src/app/app/projects/[projectId]/toc/actions.ts`: Added `deleteEdgeAssumption` server action.
+- `src/app/app/projects/[projectId]/toc/page.tsx`: Expanded Outgoing Edges UI with inline management for assumptions.
+- `src/app/app/projects/[projectId]/toc/TocGraphClient.tsx`: Updated graph edges to display assumption counts (e.g., `A:3`).
+- `supabase/verify/gate10_verify.sql`: Database verification script for edge assumptions RLS.
+
+### Verification Outputs (SQL Proof)
+- **RLS Enabled**: `toc_edge_assumptions` (relrowsecurity: true).
+- **Policies**: Verified presence of specific INSERT/SELECT/UPDATE/DELETE policies with tenant and draft status gating.
+- **Blanket Policies**: **0** (No `FOR ALL` policies).
+
+### Quality Gate
+- `npm run lint` → **Exit 0 (Clean)**.
+- `npm run build` → **✓ Compiled successfully**.
+
+### Git Proof
+- Commit message: `Gate 10: Edge assumptions UX (view/add/delete)`
+- Branch: `main`

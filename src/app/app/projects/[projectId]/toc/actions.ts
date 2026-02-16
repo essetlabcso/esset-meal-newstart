@@ -327,3 +327,25 @@ export async function addEdgeAssumption(
     revalidatePath(`/app/projects/${projectId}/toc`);
     return data;
 }
+
+export async function deleteEdgeAssumption(
+    projectId: string,
+    versionId: string,
+    edgeAssumptionId: string
+) {
+    const supabase = await createClient();
+    const tenant = await assertEditableContext(supabase, projectId, versionId);
+
+    const { error } = await supabase
+        .from("toc_edge_assumptions")
+        .delete()
+        .eq("id", edgeAssumptionId)
+        .eq("toc_version_id", versionId)
+        .eq("tenant_id", tenant.tenantId);
+
+    if (error) {
+        throw new Error(`Error deleting edge assumption: ${error.message}`);
+    }
+
+    revalidatePath(`/app/projects/${projectId}/toc`);
+}

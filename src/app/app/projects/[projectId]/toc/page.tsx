@@ -6,7 +6,9 @@ import {
     createTocDraft,
     publishToc,
     addNode,
-    addNodeAssumption
+    addNodeAssumption,
+    addEdgeAssumption,
+    deleteEdgeAssumption
 } from "./actions";
 import TocGraphClient from "./TocGraphClient";
 
@@ -334,15 +336,83 @@ export default async function TocBuilderPage({ params, searchParams }: TocBuilde
                                         </div>
 
                                         {/* Outgoing Edges */}
-                                        <div className="mt-4 flex flex-wrap gap-1">
+                                        <div className="mt-4 space-y-2">
+                                            <h5 className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Outgoing Edges</h5>
                                             {edges?.filter(e => e.source_node_id === node.id).map(edge => {
                                                 const target = nodes?.find(n => n.id === edge.target_node_id);
                                                 return (
-                                                    <div key={edge.id} className="text-[9px] bg-white/5 text-gray-500 px-2 py-0.5 rounded border border-white/5">
-                                                        → {target?.title || edge.target_node_id.slice(0, 4)}
+                                                    <div key={edge.id} className="bg-white/5 border border-white/5 rounded-lg p-3 space-y-3">
+                                                        <div className="flex items-center justify-between">
+                                                            <div className="text-[10px] text-gray-400">
+                                                                <span className="font-bold">→</span> {target?.title || edge.target_node_id.slice(0, 4)}
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Edge Assumptions */}
+                                                        <div className="space-y-1.5">
+                                                            {edge.toc_edge_assumptions?.map((ass) => (
+                                                                <div key={ass.id} className="text-[9px] bg-amber-500/5 text-amber-500/80 p-2 rounded border border-amber-500/10 flex items-start justify-between group/ass">
+                                                                    <div className="flex items-start space-x-2">
+                                                                        <span className="font-black">A:</span>
+                                                                        <span>{ass.assumption_text}</span>
+                                                                        <span className={`px-1 rounded-[2px] text-[7px] font-bold ${ass.risk_level === 'HIGH' ? 'bg-red-500/10 text-red-500' :
+                                                                                ass.risk_level === 'MEDIUM' ? 'bg-amber-500/10 text-amber-500' :
+                                                                                    'bg-emerald-500/10 text-emerald-500'
+                                                                            }`}>
+                                                                            {ass.risk_level}
+                                                                        </span>
+                                                                    </div>
+                                                                    {isEditable && (
+                                                                        <form action={async () => {
+                                                                            "use server"
+                                                                            await deleteEdgeAssumption(projectId, activeVersion.id, ass.id);
+                                                                        }} className="opacity-0 group-hover/ass:opacity-100 transition">
+                                                                            <button className="text-red-500 hover:text-red-400">
+                                                                                <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                                                </svg>
+                                                                            </button>
+                                                                        </form>
+                                                                    )}
+                                                                </div>
+                                                            ))}
+
+                                                            {isEditable && (
+                                                                <form action={async (formData: FormData) => {
+                                                                    "use server"
+                                                                    const txt = formData.get("text") as string;
+                                                                    const risk = formData.get("risk") as "LOW" | "MEDIUM" | "HIGH";
+                                                                    await addEdgeAssumption(projectId, activeVersion.id, edge.id, txt, risk);
+                                                                }} className="flex items-center gap-2">
+                                                                    <input
+                                                                        name="text"
+                                                                        required
+                                                                        placeholder="Add edge assumption..."
+                                                                        className="flex-1 bg-transparent border-b border-white/10 text-[9px] text-gray-400 py-1 outline-none focus:border-emerald-500"
+                                                                    />
+                                                                    <select
+                                                                        name="risk"
+                                                                        defaultValue="MEDIUM"
+                                                                        className="bg-transparent text-[8px] text-gray-500 outline-none"
+                                                                    >
+                                                                        <option value="LOW" className="bg-gray-900">LOW</option>
+                                                                        <option value="MEDIUM" className="bg-gray-900">MED</option>
+                                                                        <option value="HIGH" className="bg-gray-900">HIGH</option>
+                                                                    </select>
+                                                                    <button className="text-emerald-500 hover:text-emerald-400">
+                                                                        <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                                                        </svg>
+                                                                    </button>
+                                                                </form>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 );
                                             })}
+                                            {edges?.filter(e => e.source_node_id === node.id).length === 0 && (
+                                                <div className="text-[9px] text-gray-600 italic">No outgoing edges.</div>
+                                            )}
                                         </div>
                                     </div>
                                 ))}
