@@ -47,17 +47,28 @@ test.describe('ESSET MEAL Smoke Tests', () => {
         await expect(skipLink).toBeAttached();
     });
 
-    test('auth pages are reachable', async ({ page }) => {
+    test('auth pages are premium and branded', async ({ page }) => {
+        // Sign-in page
         await page.goto('/auth/sign-in');
-        await expect(page.getByRole('heading', { name: /Sign in/i })).toBeVisible();
+        await expect(page.getByTestId('auth-logo')).toBeVisible();
+        await expect(page.getByTestId('auth-signin-title')).toContainText(/Welcome back/i);
+        await expect(page.getByTestId('auth-signin-submit')).toBeVisible();
+        await expect(page.locator('footer')).toContainText(/Built for impact/i);
 
+        // Sign-up page
         await page.goto('/auth/sign-up');
-        await expect(page.getByRole('heading', { name: /Sign up/i })).toBeVisible();
+        await expect(page.getByTestId('auth-logo')).toBeVisible();
+        await expect(page.getByTestId('auth-signup-title')).toContainText(/Create your account/i);
+        await expect(page.getByTestId('auth-signup-submit')).toBeVisible();
+
+        // Sign-up success (Check email)
+        await page.goto('/auth/sign-up-success');
+        await expect(page.getByTestId('auth-check-email-title')).toContainText(/Check your email/i);
+        await expect(page.getByTestId('auth-check-email-cta')).toBeVisible();
     });
 
     test('app route redirects to sign-in when unauthenticated', async ({ page }) => {
         await page.goto('/app');
-        // It should redirect to sign-in or a similar gateway
         await expect(page).toHaveURL(/\/auth\/sign-in/);
     });
 

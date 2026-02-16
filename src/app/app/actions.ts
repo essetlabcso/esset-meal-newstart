@@ -27,7 +27,8 @@ export async function createOrganization(formData: FormData) {
         .single();
 
     if (error) {
-        return { error: error.message };
+        console.error("Failed to create organization:", error);
+        return { error: "Could not create workspace. Please try again." };
     }
 
     // DB trigger (on_org_created_add_owner) creates the owner membership
