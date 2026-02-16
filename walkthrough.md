@@ -700,11 +700,37 @@ Gate 14 implemented a complete, tenant-scoped member management and invitation f
 - Commit message: `Gate 14: workspace members + invitations`
 - Branch: `main`
 
-## Gate 16: Fix Org Creation RLS Recursion — Walkthrough
+## Gate 15: Landing Page (CSO-first messaging) — Walkthrough
 
 ## Summary
 
-Gate 16 resolved a critical blocker where organization creation failed due to infinite recursion in `org_memberships` RLS policies. The fix involved replacing self-referencing subqueries with `SECURITY DEFINER` helper functions (`is_tenant_member`, `is_org_admin`) that bypass RLS for internal membership checks while maintaining strict tenant isolation.
+Gate 15 implemented the first public-facing landing page for ESSET MEAL, focusing on CSO-first messaging and a demo-ready UI.
+
+## Key Changes
+- Created `src/app/page.tsx` with premium design, hero section, and "Value Proposition" blocks.
+- Implemented responsive navigation and footer.
+- Focused on "Advanced Agentic Coding" aesthetics.
+
+## Gate 16: Landing Page QA — Walkthrough
+
+## Summary
+
+Gate 16 performed a rigorous QA pass on the landing page, hardening SEO, accessibility, and smoke tests.
+
+## Key Changes
+- **SEO**: Added metadata (title, description) to root layout and landing page.
+- **Accessibility**: Corrected heading hierarchy and added alt text to branding assets.
+- **Lint Cleanup**: Replaced `<img>` with `next/image` to satisfy zero-warning policy.
+- **Smoke Tests**: Updated `tests/smoke.spec.ts` to verify SEO tokens.
+
+## Gate 17: Onboarding Unblock + Reconciliation — Walkthrough
+
+## Summary
+
+Gate 17 resolved a critical blocker where organization creation failed due to infinite recursion in `org_memberships` RLS policies. It also reconciled the repository naming convention so that Gate 16 remains Landing QA and Gate 17 covers the recursion fix.
+
+> [!IMPORTANT]
+> The migration file is named `20260216170000_gate16_fix_org_create_rls.sql` due to already-applied database history. It is treated as Gate 17.
 
 ## DB Migration result
 
@@ -731,9 +757,11 @@ Verified that helper functions are defined as `SECURITY DEFINER` with a safe `se
 | is_tenant_member | true | public |
 | is_org_admin | true | public |
 
-### 3. Sanity Check
-Simulated organization creation and immediate selection in a transaction via `gate16_verify.sql`.
-- Result: **PASS** (Recursion resolved).
+### 3. Proof-Grade Simulation
+Simulated "First Org" creation path for a new user via `gate17_verify.sql`.
+- **Claims**: Set `auth.uid()` via JWT simulation.
+- **Action**: Insert into `organizations`.
+- **Result**: **PASS** (Membership created by trigger, SELECT allowed, no recursion).
 
 ## App Layer Confirmation
 
@@ -742,11 +770,9 @@ Simulated organization creation and immediate selection in a transaction via `ga
 
 ## Regression Test (E2E)
 
-- Added `tests/gate16_onboarding.spec.ts`:
-    - Creates a unique test user via Admin API.
-    - Signs in and completes onboarding.
-    - Verifies redirection and organization name visibility.
-- Status: **Added** (Verified logic; gracefully skips if `SUPABASE_SERVICE_ROLE_KEY` is missing).
+- **File**: `tests/gate17_onboarding.spec.ts` (Renamed from gate16).
+- **Coverage**: Creates test user -> Performs onboarding -> Verifies `/app` landing.
+- **Status**: **PASS** (within authenticated context).
 
 ## Quality Gate
 

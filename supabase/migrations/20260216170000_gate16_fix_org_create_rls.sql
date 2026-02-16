@@ -1,4 +1,4 @@
--- Gate 16: Fix org creation RLS recursion
+-- Gate 17 (legacy filename gate16): Fix org creation RLS recursion
 -- This migration replaces self-referencing subqueries in RLS policies with SECURITY DEFINER functions to break the recursion.
 
 -- 1) Drop recursive policies
