@@ -62,10 +62,11 @@ export default async function TocBuilderPage({ params, searchParams }: TocBuilde
         // Fetch snapshots for the "Start ToC" dropdown
         const { data: snapshots } = await supabase
             .from("analysis_snapshots")
-            .select("id, title")
+            .select("id, title, created_at")
             .eq("project_id", projectId)
             .eq("tenant_id", tenant.tenantId)
-            .order("created_at", { ascending: false });
+            .order("created_at", { ascending: false })
+            .limit(20);
 
         return (
             <div className="p-8 max-w-2xl mx-auto">
@@ -137,15 +138,16 @@ export default async function TocBuilderPage({ params, searchParams }: TocBuilde
     // Get latest published for cloning purposes
     const latestPublished = versions?.find(v => v.status === 'PUBLISHED');
 
-    // Get latest snapshot for "New Draft" logic
-    const { data: latestSnapshot } = await supabase
+    // Get latest snapshots for the "New Draft" dropdown
+    const { data: snapshots } = await supabase
         .from("analysis_snapshots")
-        .select("id")
+        .select("id, title, created_at")
         .eq("project_id", projectId)
         .eq("tenant_id", tenant.tenantId)
         .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .limit(20);
+
+    const activeSnapshot = snapshots?.find(s => s.id === activeVersion.analysis_snapshot_id);
 
     return (
         <div className="p-8 max-w-6xl mx-auto">
@@ -159,6 +161,17 @@ export default async function TocBuilderPage({ params, searchParams }: TocBuilde
                             {activeVersion.status}
                         </span>
                     </div>
+                    {activeSnapshot && (
+                        <div className="mt-2 flex items-center space-x-2 text-xs">
+                            <span className="text-gray-500 font-medium">Anchored to:</span>
+                            <Link
+                                href={`/app/projects/${projectId}/analysis/${activeSnapshot.id}`}
+                                className="text-emerald-400 hover:text-emerald-300 transition underline underline-offset-4"
+                            >
+                                {activeSnapshot.title}
+                            </Link>
+                        </div>
+                    )}
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3">
@@ -195,18 +208,37 @@ export default async function TocBuilderPage({ params, searchParams }: TocBuilde
                                 </form>
                             )}
 
-                            <form action={async () => {
+                            <form action={async (formData: FormData) => {
                                 "use server"
-                                if (!latestSnapshot) throw new Error("Create an analysis snapshot first.");
-                                await createTocDraft(projectId, latestSnapshot.id, latestPublished?.id);
-                            }}>
+                                const sid = formData.get("snapshot_id") as string;
+                                if (!sid) throw new Error("Please select an analysis snapshot.");
+                                await createTocDraft(projectId, sid, latestPublished?.id);
+                            }} className="flex items-center gap-2">
+                                <select
+                                    name="snapshot_id"
+                                    required
+                                    defaultValue={snapshots?.[0]?.id || ""}
+                                    className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-emerald-500 transition max-w-[180px]"
+                                >
+                                    <option value="" disabled>Analyze first...</option>
+                                    {snapshots?.map(s => (
+                                        <option key={s.id} value={s.id} className="bg-gray-900">
+                                            {s.title} ({new Date(s.created_at).toLocaleDateString()})
+                                        </option>
+                                    ))}
+                                </select>
                                 <button
-                                    disabled={!latestSnapshot}
-                                    title={!latestSnapshot ? "Create an analysis snapshot first" : "Create new draft"}
-                                    className="rounded-lg bg-white/10 px-4 py-2 text-sm font-medium text-white hover:bg-white/20 transition disabled:opacity-50"
+                                    disabled={!snapshots || snapshots.length === 0}
+                                    title={!snapshots || snapshots.length === 0 ? "Create an analysis snapshot first" : "Create new draft"}
+                                    className="rounded-lg bg-white/10 px-4 py-2 text-sm font-medium text-white hover:bg-white/20 transition disabled:opacity-50 whitespace-nowrap"
                                 >
                                     New Draft
                                 </button>
+                                {(!snapshots || snapshots.length === 0) && (
+                                    <Link href={`/app/projects/${projectId}/analysis/new`} className="text-[10px] text-amber-400 hover:underline">
+                                        Create Snapshot
+                                    </Link>
+                                )}
                             </form>
                         </div>
                     )}

@@ -2,22 +2,22 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveTenant } from "@/lib/tenant";
 import { notFound } from "next/navigation";
-import { createAnalysisSnapshot } from "./actions";
+import { deleteAnalysisSnapshot, AnalysisSnapshotPayload } from "./actions";
 
-interface AnalysisSnapshotPageProps {
+interface AnalysisListPageProps {
     params: Promise<{
         projectId: string;
     }>;
 }
 
-export default async function AnalysisSnapshotPage({ params }: AnalysisSnapshotPageProps) {
+export default async function AnalysisListPage({ params }: AnalysisListPageProps) {
     const { projectId } = await params;
     const supabase = await createClient();
     const tenant = await getActiveTenant(supabase);
 
     if (!tenant) return notFound();
 
-    // Verify project and fetch snapshots
+    // Verify project belongs to tenant
     const { data: project } = await supabase
         .from("projects")
         .select("title")
@@ -29,100 +29,76 @@ export default async function AnalysisSnapshotPage({ params }: AnalysisSnapshotP
 
     const { data: snapshots } = await supabase
         .from("analysis_snapshots")
-        .select("*")
+        .select("id, title, created_at, created_by, snapshot")
         .eq("project_id", projectId)
         .eq("tenant_id", tenant.tenantId)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .limit(50);
 
-    async function handleSnapshotCreate(formData: FormData) {
-        "use server"
-        const title = formData.get("title") as string;
-        const notes = formData.get("notes") as string;
-        await createAnalysisSnapshot(projectId, title, notes);
-    }
+    const isAdmin = tenant.role !== "member";
 
     return (
         <div className="p-8 max-w-4xl mx-auto">
-            <div className="mb-8">
+            <div className="mb-8 flex items-center justify-between">
+                <div>
+                    <Link href={`/app/projects/${projectId}`} className="text-sm text-gray-400 hover:text-white transition">← Back to Project</Link>
+                    <h1 className="text-2xl font-bold text-white mt-4">Analysis Snapshots</h1>
+                    <p className="text-gray-400 text-sm mt-1">Contextual foundations for {project.title}</p>
+                </div>
                 <Link
-                    href={`/app/projects/${projectId}`}
-                    className="text-sm text-gray-400 hover:text-white transition"
+                    href={`/app/projects/${projectId}/analysis/new`}
+                    className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-600 transition"
                 >
-                    ← Back to Project
+                    + New Snapshot
                 </Link>
-                <h1 className="text-2xl font-bold text-white mt-4">Analysis Snapshots for {project.title}</h1>
-                <p className="text-gray-400 text-sm mt-1">Immutable snapshots used to anchor ToC versions.</p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <div className="md:col-span-1">
-                    <form action={handleSnapshotCreate} className="space-y-4 bg-white/5 border border-white/5 rounded-xl p-6 sticky top-8">
-                        <h2 className="text-lg font-medium text-white mb-4">New Snapshot</h2>
-                        <div>
-                            <label htmlFor="title" className="block text-sm font-medium text-gray-300">
-                                Snapshot Title
-                            </label>
-                            <input
-                                type="text"
-                                name="title"
-                                id="title"
-                                required
-                                placeholder="e.g., Initial Assessment Feb 2026"
-                                className="mt-1 block w-full rounded-lg border border-white/10 bg-white/5 p-2.5 text-white focus:border-emerald-500 focus:outline-none"
-                            />
-                        </div>
-                        <div>
-                            <label htmlFor="notes" className="block text-sm font-medium text-gray-300">
-                                Analysis Notes
-                            </label>
-                            <textarea
-                                name="notes"
-                                id="notes"
-                                rows={4}
-                                placeholder="Paste analysis results or key takeaways here..."
-                                className="mt-1 block w-full rounded-lg border border-white/10 bg-white/5 p-2.5 text-white focus:border-emerald-500 focus:outline-none"
-                            />
-                        </div>
-                        <button
-                            type="submit"
-                            className="w-full rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-600 transition"
-                        >
-                            Create Snapshot
-                        </button>
-                    </form>
-                </div>
+            <div className="space-y-4">
+                {snapshots && snapshots.length > 0 ? (
+                    snapshots.map((s) => (
+                        <div key={s.id} className="group relative bg-white/5 border border-white/5 rounded-xl p-6 hover:border-emerald-500/30 transition">
+                            <div className="flex items-center justify-between">
+                                <Link href={`/app/projects/${projectId}/analysis/${s.id}`} className="flex-1">
+                                    <h3 className="text-lg font-semibold text-white group-hover:text-emerald-400 transition">{s.title}</h3>
+                                    <div className="flex items-center space-x-3 mt-1 text-xs text-gray-500">
+                                        <span>{new Date(s.created_at).toLocaleDateString()}</span>
+                                        <span>•</span>
+                                        <span className="font-mono text-[10px] uppercase tracking-tighter">{s.id.slice(0, 8)}</span>
+                                    </div>
+                                    {s.snapshot && (
+                                        <p className="mt-3 text-sm text-gray-400 line-clamp-2">
+                                            {(s.snapshot as unknown as AnalysisSnapshotPayload).context_summary || (s.snapshot as { notes?: string }).notes || "No summary provided."}
+                                        </p>
+                                    )}
+                                </Link>
 
-                <div className="md:col-span-2 space-y-4">
-                    <h2 className="text-lg font-medium text-white mb-4">Past Snapshots</h2>
-                    {!snapshots || snapshots.length === 0 ? (
-                        <div className="rounded-xl border border-dashed border-white/10 p-8 text-center text-gray-400">
-                            No snapshots yet. Create one to start building your Theory of Change.
-                        </div>
-                    ) : (
-                        snapshots.map((snapshot) => (
-                            <div key={snapshot.id} className="bg-white/5 border border-white/5 rounded-xl p-6">
-                                <div className="flex justify-between items-start mb-2">
-                                    <h3 className="font-medium text-white">{snapshot.title}</h3>
-                                    <span className="text-[10px] text-gray-500 px-2 py-1 rounded bg-white/5 uppercase tracking-wider">
-                                        {new Date(snapshot.created_at).toLocaleDateString()}
-                                    </span>
-                                </div>
-                                <div className="text-sm text-gray-400 line-clamp-3">
-                                    {(snapshot.snapshot as { notes?: string })?.notes || "No notes provided."}
-                                </div>
-                                <div className="mt-4 pt-4 border-t border-white/5 flex items-center justify-between">
-                                    <span className="text-xs text-gray-500">ID: {snapshot.id.slice(0, 8)}...</span>
-                                    <Link
-                                        href={`/app/projects/${projectId}/toc?snapshot=${snapshot.id}`}
-                                        className="text-xs text-emerald-500 hover:underline"
-                                    >
-                                        Use for ToC →
-                                    </Link>
-                                </div>
+                                {isAdmin && (
+                                    <form action={async () => {
+                                        "use server"
+                                        await deleteAnalysisSnapshot(projectId, s.id);
+                                    }}>
+                                        <button className="text-xs text-gray-500 hover:text-red-400 transition px-2 py-1">
+                                            Delete
+                                        </button>
+                                    </form>
+                                )}
                             </div>
-                        ))
-                    )}
-                </div>
+                        </div>
+                    ))
+                ) : (
+                    <div className="bg-white/5 border border-white/5 rounded-xl p-12 text-center">
+                        <p className="text-gray-400 mb-6">No snapshots yet. Start by defining the project context.</p>
+                        <Link
+                            href={`/app/projects/${projectId}/analysis/new`}
+                            className="inline-flex items-center space-x-2 text-emerald-400 font-medium hover:text-emerald-300 transition"
+                        >
+                            <span>Create your first snapshot</span>
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                            </svg>
+                        </Link>
+                    </div>
+                )}
             </div>
         </div>
     );

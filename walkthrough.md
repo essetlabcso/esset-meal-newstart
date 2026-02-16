@@ -527,3 +527,59 @@ Verified that all mutation policies (INSERT/UPDATE/DELETE) for nodes, edges, and
 
 - `git status` → Working tree aligned.
 - `git log` → Consolidated Gate 8 implementation.
+
+## Gate 9: Analysis Snapshots (UI) + ToC Snapshot Selection — Walkthrough
+
+## Summary
+
+Gate 9 implemented the full UI and server actions for Analysis Snapshots, providing the contextual foundation for Theory of Change versions. It includes a structured payload for situational analysis and integrates snapshot selection directly into the "New Draft" ToC flow.
+
+## Files Created/Updated
+
+- `src/app/app/projects/[projectId]/analysis/actions.ts`: Server actions for creating and deleting snapshots.
+- `src/app/app/projects/[projectId]/analysis/page.tsx`: Snapshot listing page.
+- `src/app/app/projects/[projectId]/analysis/new/page.tsx`: Structured analysis form.
+- `src/app/app/projects/[projectId]/analysis/[snapshotId]/page.tsx`: Detail view for situational analysis.
+- `src/app/app/projects/[projectId]/toc/page.tsx`: Integrated snapshot display and selector.
+- `supabase/verify/gate9_verify.sql`: Database verification script.
+
+## Snapshot Payload Schema
+
+Snapshots store a structured JSON object with the following keys:
+- `context_summary`
+- `problem_statement`
+- `stakeholders`
+- `evidence_notes`
+- `key_assumptions`
+- `risks_and_mitigations`
+
+## Verification Outputs (SQL Proof)
+
+### Phase 1: Table & RLS Status
+| table_name | relrowsecurity |
+|---|---|
+| analysis_snapshots | true |
+
+### Phase 2: RLS Policies
+| policyname | cmd | qual/with_check |
+|---|---|---|
+| analysis_snapshots_select | SELECT | `is_tenant_member(tenant_id)` |
+| analysis_snapshots_insert | INSERT | `(is_tenant_member(tenant_id) AND (created_by = auth.uid()))` |
+| analysis_snapshots_update | UPDATE | `is_org_admin(tenant_id)` |
+| analysis_snapshots_delete | DELETE | `is_org_admin(tenant_id)` |
+
+## ToC Integration
+- Header now displays the anchored snapshot title with a link.
+- "New Draft" flow requires selecting an analysis snapshot (defaults to latest).
+- CTA provided if no snapshots exist.
+
+## Quality Gate
+
+- `supabase gen types typescript --linked` → Regenerated `database.types.ts`.
+- `npm run lint` → **Exit 0 (Clean)**.
+- `npm run build` → **✓ Compiled successfully (Next.js 16.1.6 Turbopack)**.
+
+## Git Status
+
+- `git status` → Working tree aligned.
+- `git log` → Gate 9: Analysis snapshots UI + ToC snapshot selection.
