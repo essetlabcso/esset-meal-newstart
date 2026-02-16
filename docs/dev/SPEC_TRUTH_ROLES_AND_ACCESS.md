@@ -30,5 +30,8 @@ The following capabilities are **NOT** implemented yet:
 ## Security Enforcement
 
 - **Database**: RLS policies enforce `tenant_id` isolation for all tables.
+- **Roster Privacy**: `org_memberships` SELECT policy restricts visibility:
+  - Non-admins can only see their own membership row.
+  - Admins/Owners can see the full roster.
 - **Server Actions**: Use `public.is_org_admin(_org_id)` helper for administrative operations.
 - **Middleware/Layout**: Ensures user is signed in and has an active tenant context.

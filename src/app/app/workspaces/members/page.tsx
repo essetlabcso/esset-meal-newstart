@@ -20,10 +20,15 @@ export default async function MembersPage() {
         redirect("/app/workspaces");
     }
 
+    const isAdmin = activeTenant.role === "admin" || activeTenant.role === "owner";
+
+    // Strict route-level guard for roster privacy
+    if (!isAdmin) {
+        redirect("/app");
+    }
+
     const members = (await listMembers()) as unknown as OrgMembership[];
     const invites = (await listInvites()) as unknown as OrgInvitation[];
-
-    const isAdmin = activeTenant.role === "admin" || activeTenant.role === "owner";
 
     async function handleRevoke(inviteId: string) {
         "use server";

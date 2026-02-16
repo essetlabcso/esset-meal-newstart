@@ -30,6 +30,9 @@ export async function listInvites() {
     const activeTenant = await getActiveTenant(supabase);
     if (!activeTenant) throw new Error("No active workspace");
 
+    const isAdmin = activeTenant.role === "admin" || activeTenant.role === "owner";
+    if (!isAdmin) throw new Error("Unauthorized: Admin access required");
+
     const { data: invites, error } = await supabase
         .from("org_invitations")
         .select("*")
@@ -48,6 +51,9 @@ export async function createInvite(email: string, role: "admin" | "member") {
     const supabase = await createClient();
     const activeTenant = await getActiveTenant(supabase);
     if (!activeTenant) throw new Error("No active workspace");
+
+    const isAdmin = activeTenant.role === "admin" || activeTenant.role === "owner";
+    if (!isAdmin) throw new Error("Unauthorized: Admin access required");
 
     const { data, error } = await supabase.rpc("create_org_invite", {
         p_tenant_id: activeTenant.tenantId,
@@ -70,6 +76,9 @@ export async function revokeInvite(inviteId: string) {
     const supabase = await createClient();
     const activeTenant = await getActiveTenant(supabase);
     if (!activeTenant) throw new Error("No active workspace");
+
+    const isAdmin = activeTenant.role === "admin" || activeTenant.role === "owner";
+    if (!isAdmin) throw new Error("Unauthorized: Admin access required");
 
     const { error } = await supabase
         .from("org_invitations")

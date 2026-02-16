@@ -81,6 +81,9 @@ export default function MemberInviteForm() {
                             className="flex-1 bg-black/40 border border-white/5 rounded px-3 py-1.5 text-sm text-gray-300"
                         />
                         <button
+                            type="button"
+                            data-testid="copy-invite-link"
+                            data-invite-link={inviteLink}
                             onClick={() => {
                                 navigator.clipboard.writeText(inviteLink);
                                 alert("Copied to clipboard!");
