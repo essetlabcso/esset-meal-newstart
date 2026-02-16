@@ -2,7 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveTenant } from "@/lib/tenant";
 import { notFound, redirect } from "next/navigation";
-import { deleteAnalysisSnapshot, AnalysisSnapshotPayload } from "../actions";
+import { deleteAnalysisSnapshot } from "../actions";
 
 interface AnalysisDetailPageProps {
     params: Promise<{

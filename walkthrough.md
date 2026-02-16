@@ -607,3 +607,26 @@ Gate 10 made edge assumptions first-class citizens in the Theory of Change UI. I
 ### Git Proof
 - Commit message: `Gate 10: Edge assumptions UX (view/add/delete)`
 - Branch: `main`
+
+## Gate 11: Quality Lock (zero-warn lint + CI) — Walkthrough
+
+### Summary
+Gate 11 enforced a "Quality Lock" on the repository by ensuring a warning-free lint state and establishing a GitHub Actions CI workflow for automated verification of future changes.
+
+### Files Created/Updated
+- `src/app/app/projects/analysis/[snapshotId]/page.tsx`: Fixed unused variable warning.
+- `package.json`: Updated `lint` script to enforce zero warnings (`--max-warnings 0`).
+- `.github/workflows/ci.yml`: Created a GitHub Actions workflow for lint + build.
+
+### Quality Gate
+- `npm run lint` → **Exit 0 (0 warnings)**.
+- `npm run build` → **✓ Compiled successfully**.
+
+### CI Configuration
+- **Path**: `.github/workflows/ci.yml`
+- **Triggers**: `push` to `main`, `pull_request` to `main`.
+- **Steps**: Checkout, Node 20 Setup, `npm ci`, `npm run lint`, `npm run build`.
+
+### Git Proof
+- Commit message: `Gate 11: Quality lock (zero-warn lint + CI)`
+- Branch: `main`
