@@ -699,3 +699,56 @@ Gate 14 implemented a complete, tenant-scoped member management and invitation f
 
 - Commit message: `Gate 14: workspace members + invitations`
 - Branch: `main`
+
+## Gate 16: Fix Org Creation RLS Recursion — Walkthrough
+
+## Summary
+
+Gate 16 resolved a critical blocker where organization creation failed due to infinite recursion in `org_memberships` RLS policies. The fix involved replacing self-referencing subqueries with `SECURITY DEFINER` helper functions (`is_tenant_member`, `is_org_admin`) that bypass RLS for internal membership checks while maintaining strict tenant isolation.
+
+## DB Migration result
+
+```bash
+Applying migration 20260216170000_gate16_fix_org_create_rls.sql...
+Finished supabase db push.
+```
+
+## Verification Outputs (SQL Proof)
+
+### 1. Policy Non-Recursion Proof
+Verified that `org_memberships` and `organizations` select policies now use helper functions instead of direct subqueries.
+
+| table | policy | qual |
+|---|---|---|
+| org_memberships | orgm_select_if_member | `public.is_tenant_member(org_id)` |
+| organizations | org_select_if_member | `public.is_tenant_member(id)` |
+
+### 2. Helper Function Security
+Verified that helper functions are defined as `SECURITY DEFINER` with a safe `search_path`.
+
+| function | prosecdef | search_path |
+|---|---|---|
+| is_tenant_member | true | public |
+| is_org_admin | true | public |
+
+### 3. Sanity Check
+Simulated organization creation and immediate selection in a transaction via `gate16_verify.sql`.
+- Result: **PASS** (Recursion resolved).
+
+## App Layer Confirmation
+
+- **Onboarding Flow**: Confirmed `AppLayout` correctly allows access to `/app/onboarding` when `tenants.length === 0`.
+- **Redirection**: Confirmed `createOrganization` action correctly redirects to `/app` after successful creation.
+
+## Regression Test (E2E)
+
+- Added `tests/gate16_onboarding.spec.ts`:
+    - Creates a unique test user via Admin API.
+    - Signs in and completes onboarding.
+    - Verifies redirection and organization name visibility.
+- Status: **Added** (Verified logic; gracefully skips if `SUPABASE_SERVICE_ROLE_KEY` is missing).
+
+## Quality Gate
+
+- `npm run lint` → **Exit 0 (Clean)**.
+- `npm run build` → **✓ Compiled successfully**.
