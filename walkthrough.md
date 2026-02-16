@@ -778,3 +778,65 @@ Simulated "First Org" creation path for a new user via `gate17_verify.sql`.
 
 - `npm run lint` → **Exit 0 (Clean)**.
 - `npm run build` → **✓ Compiled successfully**.
+
+## Gate 21: Projects + Reporting Periods (PRJ) MVP + Tenant Scoping Proof — Walkthrough
+
+## Summary
+
+Gate 21 implemented a workspace-scoped Projects + Reporting Periods foundation. This included hardening existing `projects` RLS policies to allow creator/admin access, creating the `reporting_periods` table with full RLS protection, and providing a minimal-but-real CRUD UI for reporting periods within each project. Isolation was proven via SQL-based auth simulation and E2E specs.
+
+## DB Migration result
+
+```bash
+Applying migration 20260216183700_gate21_projects_reporting_periods.sql...
+Finished supabase db push.
+```
+
+## Verification Outputs (SQL Proof)
+
+### 1. Table & RLS Status
+| table_name | relrowsecurity |
+|---|---|
+| projects | true |
+| reporting_periods | true |
+
+### 2. RLS Policies
+Verified that mutation policies (UPDATE/DELETE) for projects and all policies for reporting periods:
+1. Enforce `is_tenant_member(tenant_id)`.
+2. Allow `is_org_admin(tenant_id)` OR `created_by = auth.uid()`.
+
+### 3. Isolation Proof (gate21_verify.sql)
+```json
+[
+  {
+    "verify_gate21": {
+      "status": "PASS",
+      "projects_visible_count": 1,
+      "periods_visible_count": 0,
+      "periods_after_insert_count": 1,
+      "cross_org_insert": "PASSED (blocked)",
+      "project_title_after_update": "Project A Updated"
+    }
+  }
+]
+```
+
+## App Layer Implementation
+
+- **Server Actions**:
+  - `src/app/app/projects/[projectId]/actions.ts`: Hard-scoped actions for project management and reporting periods CRUD.
+- **UI Routes**:
+  - `/app/projects/[projectId]/reporting-periods`: Minimal CRUD UI for managing time blocks.
+  - `/app/projects/[projectId]`: Updated project dashboard with "Reporting Periods" quick link.
+
+## Proof of Build & Lint
+
+- `npm run lint` → **Exit 0 (Clean)**.
+- `npm run build` → **✓ Compiled successfully**.
+- `supabase gen types typescript --linked` → Regenerated `database.types.ts`.
+
+## Regression Test (E2E)
+
+- **File**: `tests/gate21_projects_reporting_periods.e2e.spec.ts`
+- **Coverage**: Project creation -> Reporting Period creation -> Isolation check.
+- **Status**: **PASS** (SQL isolation proven; UI flow verified).

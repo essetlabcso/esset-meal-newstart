@@ -30,7 +30,7 @@ export default defineConfig({
         {
             name: 'unauth',
             use: { ...devices['Desktop Chrome'] },
-            testIgnore: /.*auth\.smoke\.spec\.ts/,
+            testIgnore: [/.*auth\..*spec\.ts/, /.*gate.*\.spec\.ts/],
         },
         {
             name: 'auth',
@@ -39,7 +39,7 @@ export default defineConfig({
                 storageState: process.env.SUPABASE_SERVICE_ROLE_KEY ? 'playwright/.auth/storageState.json' : undefined,
             },
             dependencies: ['setup'],
-            testMatch: /.*auth\.smoke\.spec\.ts/,
+            testMatch: [/.*auth\..*spec\.ts/, /.*gate.*\.spec\.ts/],
         },
     ],
 

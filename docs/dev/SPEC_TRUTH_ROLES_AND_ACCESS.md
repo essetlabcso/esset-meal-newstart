@@ -19,6 +19,7 @@ This document defines the current state of role-based access control (RBAC) and 
 | **Edit ToC Draft** | Yes | Yes | Currently any member can edit drafts. |
 | **Publish ToC** | Yes | No | `is_org_admin` checked in `publishToc`. |
 | **Analysis Snapshots** | Manage | Manage | Scoped strictly to project/tenant via RLS. |
+| **Reporting Periods** | Manage | View-only | Creator or admin can manage. Scoped by tenant + project. |
 
 ## Out-of-Scope (Future Gates)
 

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getProject, updateProject, deleteProject } from "../actions";
+import { getProject, updateProject, deleteProject } from "./actions";
 
 interface ProjectDetailPageProps {
     params: Promise<{
@@ -49,6 +49,16 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
                     <div>
                         <div className="text-sm font-medium text-white">ToC Builder</div>
                         <div className="text-xs text-gray-400">Map theory of change graph</div>
+                    </div>
+                    <span className="text-emerald-500 group-hover:translate-x-1 transition-transform">→</span>
+                </Link>
+                <Link
+                    href={`/app/projects/${projectId}/reporting-periods`}
+                    className="flex items-center justify-between rounded-xl bg-white/5 border border-white/5 p-4 hover:bg-white/10 transition group"
+                >
+                    <div>
+                        <div className="text-sm font-medium text-white">Reporting Periods</div>
+                        <div className="text-xs text-gray-400">Manage time blocks for reporting</div>
                     </div>
                     <span className="text-emerald-500 group-hover:translate-x-1 transition-transform">→</span>
                 </Link>
