@@ -405,4 +405,81 @@ Gate 6.2 aligned the tenant resolver logic with the intended Gate 6 state, ensur
 
 ## Git Status
 - `git status` → Working tree aligned.
-- `git log` → History reflects Gate 6.2 incremental progress.
+- [x] Step 9: Commit + push
+
+## Gate 6.3: Drift Reconciliation (Repo Truth vs Claims) — Walkthrough
+
+## Summary
+
+Gate 6.3 reconciled the repository state against claims of drift. The Truth Audit confirmed that the repository already contained all Gate 6.2 implementations (Tenant Resolver, Workspace Selector, Proof-Grade Verification). This section provides the "Repo Proof Pack" to confirm the repo status and dismiss outdated snapshot reports.
+
+## Repo Truth Evidence
+
+### 1. Tenant Resolver (`src/lib/tenant.ts`)
+- **Query Logic**: Confirmed use of `profiles.active_tenant_id` resolution and parallel fetching of profile/memberships.
+- **Persistence**: `getActiveTenant` automatically persists the tenant for single-membership users.
+- **Stable Sorting**: `listUserTenants` implements role priority sorting (`owner=0, admin=1, member=2, else=99`).
+
+### 2. App Layout & Workspaces
+- **Layout Redirect**: `src/app/app/layout.tsx` redirects to `/app/workspaces` if `tenant` is null but memberships exist.
+- **Workspaces Route**: `src/app/app/workspaces/page.tsx` exists and implements auto-redirect for single-membership users.
+
+### 3. Verification Scripts
+- **Gate 5.1 Verification**: `supabase/verify/gate5_verify.sql` contains NO `\set` commands and uses deep policy inspection.
+- **Gate 6 Verification**: `supabase/verify/gate6_verify.sql` uses `pg_get_constraintdef` and `relrowsecurity` for definitive proofs.
+
+## MCP Verification Highlights (Live Database)
+
+### ToC Policy Consistency (Gate 5.1)
+| tablename | policyname | cmd | qual | with_check |
+|---|---|---|---|---|
+| toc_nodes | toc_nodes_update | UPDATE | `(is_tenant_member(tenant_id) AND ...)` | `(is_tenant_member(tenant_id) AND ...)` |
+| toc_edges | toc_edges_insert | INSERT | `NULL` | `(is_tenant_member(tenant_id) AND ...)` |
+
+### Active Tenant Proof (Gate 6)
+| proof_point | value |
+|---|---|
+| profiles.active_tenant_id | `uuid`, `YES` (nullable) |
+| Foreign Key Def | `FOREIGN KEY (active_tenant_id) REFERENCES organizations(id) ON DELETE SET NULL` |
+| Index | `idx_profiles_active_tenant_id` (btree) |
+| profiles_update_own | `with_check`: `((id = auth.uid()) AND ((active_tenant_id IS NULL) OR is_tenant_member(active_tenant_id)))` |
+| Profiles RLS | `relrowsecurity: true` (Enabled) |
+
+## Quality & Build Proof
+- `npm run lint` → **Exit 0 (Clean)**.
+- `npm run build` → **✓ Compiled successfully (Next.js 16.1.6 Turbopack)**.
+- `src/lib/database.types.ts` → Validated against current schema.
+
+## Git Status Verification
+- HEAD: `c95ccaf` (Gate 6.2 completion).
+- Working Tree: Clean (no drift vs remote repository).
+
+## Gate 7: ToC Visual Graph + Layout Persistence
+
+Implement a visual strategy builder using React Flow, with persisted node positions and tenant-scoped security.
+
+### 1. Database Implementation
+- **Migration**: `20260216083000_gate7_toc_layout.sql`
+- **Schema**: Added `pos_x` (float8) and `pos_y` (float8) to `public.toc_nodes`.
+- **Defaults**: New nodes auto-positioned by `node_type` (Column) and count (Row offset).
+
+### 2. Verification (Live Proof)
+```sql
+-- Column Proof
+SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'toc_nodes' AND column_name IN ('pos_x', 'pos_y');
+-- Output: pos_x (double precision), pos_y (double precision)
+
+-- RLS & Policy Proof
+SELECT relname, relrowsecurity FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE relname = 'toc_nodes';
+-- Output: toc_nodes (true)
+```
+
+### 3. Application Layer
+- **Visual Builder**: `src/app/app/projects/[projectId]/toc/TocGraphClient.tsx` (React Flow).
+- **Position Updates**: `updateNodePosition` server action in `actions.ts`.
+- **Immutable Protection**: Visual drug/drop disabled if version is `PUBLISHED` or user is `member`.
+
+### 4. Quality Gate
+- `npm run lint` → **Exit 0**.
+- `npm run build` → **Compiled successfully**.
+- `database.types.ts` → Regenerated with layout columns.

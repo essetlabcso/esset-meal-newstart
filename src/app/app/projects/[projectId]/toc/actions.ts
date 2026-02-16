@@ -82,6 +82,23 @@ export async function addNode(
     if (!tenant) throw new Error("Unauthorized: No active tenant");
     await verifyProjectContext(supabase, projectId, tenant.tenantId);
 
+    // Get existing nodes of this type in this version for row offset
+    const { count } = await supabase
+        .from("toc_nodes")
+        .select("*", { count: "exact", head: true })
+        .eq("toc_version_id", versionId)
+        .eq("node_type", nodeType);
+
+    const typeColumns: Record<string, number> = {
+        GOAL: 0,
+        OUTCOME: 250,
+        OUTPUT: 500,
+        ACTIVITY: 750
+    };
+
+    const pos_x = typeColumns[nodeType] || 0;
+    const pos_y = (count || 0) * 100;
+
     const { data, error } = await supabase
         .from("toc_nodes")
         .insert({
@@ -89,7 +106,9 @@ export async function addNode(
             toc_version_id: versionId,
             node_type: nodeType,
             title,
-            description
+            description,
+            pos_x,
+            pos_y
         })
         .select()
         .single();
@@ -100,6 +119,46 @@ export async function addNode(
 
     revalidatePath(`/app/projects/${projectId}/toc`);
     return data;
+}
+
+export async function updateNodePosition(
+    projectId: string,
+    versionId: string,
+    nodeId: string,
+    pos_x: number,
+    pos_y: number
+) {
+    const supabase = await createClient();
+    const tenant = await getActiveTenant(supabase);
+
+    if (!tenant) throw new Error("Unauthorized: No active tenant");
+    await verifyProjectContext(supabase, projectId, tenant.tenantId);
+
+    // Verify version is DRAFT via join or separate check
+    const { data: version, error: vError } = await supabase
+        .from("toc_versions")
+        .select("status")
+        .eq("id", versionId)
+        .eq("tenant_id", tenant.tenantId)
+        .single();
+
+    if (vError || !version) throw new Error("Unauthorized: Version context invalid");
+    if (version.status !== "DRAFT") throw new Error("Immutable: Cannot move nodes in a published version");
+
+    // Update node
+    const { error } = await supabase
+        .from("toc_nodes")
+        .update({ pos_x, pos_y })
+        .eq("id", nodeId)
+        .eq("toc_version_id", versionId)
+        .eq("tenant_id", tenant.tenantId);
+
+    if (error) {
+        throw new Error(`Error updating node position: ${error.message}`);
+    }
+
+    // Usually avoid full revalidate for drag, but for consistency:
+    revalidatePath(`/app/projects/${projectId}/toc`);
 }
 
 export async function addEdge(

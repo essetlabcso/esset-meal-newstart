@@ -398,6 +398,8 @@ export type Database = {
           id: string
           metadata: Json
           node_type: string
+          pos_x: number
+          pos_y: number
           tenant_id: string
           title: string
           toc_version_id: string
@@ -409,6 +411,8 @@ export type Database = {
           id?: string
           metadata?: Json
           node_type: string
+          pos_x?: number
+          pos_y?: number
           tenant_id: string
           title: string
           toc_version_id: string
@@ -420,6 +424,8 @@ export type Database = {
           id?: string
           metadata?: Json
           node_type?: string
+          pos_x?: number
+          pos_y?: number
           tenant_id?: string
           title?: string
           toc_version_id?: string

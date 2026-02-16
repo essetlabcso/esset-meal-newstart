@@ -9,6 +9,7 @@ import {
     addEdge,
     addNodeAssumption
 } from "./actions";
+import TocGraphClient from "./TocGraphClient";
 
 interface TocBuilderPageProps {
     params: Promise<{
@@ -134,6 +135,8 @@ export default async function TocBuilderPage({ params, searchParams }: TocBuilde
         .eq("toc_version_id", activeVersion.id)
         .eq("tenant_id", tenant.tenantId);
 
+    const isEditable = activeVersion.status === "DRAFT" && tenant.role !== "member";
+
     return (
         <div className="p-8 max-w-6xl mx-auto">
             {/* Header */}
@@ -142,11 +145,13 @@ export default async function TocBuilderPage({ params, searchParams }: TocBuilde
                     <Link href={`/app/projects/${projectId}`} className="text-sm text-gray-400 hover:text-white transition">← Back to Project</Link>
                     <div className="flex items-center space-x-3 mt-4">
                         <h1 className="text-2xl font-bold text-white uppercase tracking-tight">{project.title} - ToC v{activeVersion.version_number}</h1>
-                        <span className="px-2 py-0.5 rounded bg-amber-500/10 text-amber-500 text-[10px] font-bold uppercase">Draft</span>
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${activeVersion.status === 'DRAFT' ? 'bg-amber-500/10 text-amber-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
+                            {activeVersion.status}
+                        </span>
                     </div>
                 </div>
                 <div className="flex space-x-3">
-                    {tenant.role !== 'member' && (
+                    {activeVersion.status === 'DRAFT' && tenant.role !== 'member' && (
                         <form action={async () => {
                             "use server"
                             await publishToc(projectId, activeVersion.id);
@@ -157,6 +162,21 @@ export default async function TocBuilderPage({ params, searchParams }: TocBuilde
                         </form>
                     )}
                 </div>
+            </div>
+
+            {/* Visual Graph Section */}
+            <div className="mb-12">
+                <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-xs font-black tracking-widest text-gray-500 uppercase">Strategy Graph Builder</h2>
+                    <div className="text-[10px] text-gray-500 italic">Drag nodes to persist layout</div>
+                </div>
+                <TocGraphClient
+                    projectId={projectId}
+                    versionId={activeVersion.id}
+                    initialNodes={nodes || []}
+                    initialEdges={edges || []}
+                    isEditable={isEditable}
+                />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
