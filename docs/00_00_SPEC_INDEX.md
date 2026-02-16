@@ -1,5 +1,10 @@
 # Spec Index
 
+## Editing rule
+- Do not remove backticks around paths.
+- Insert new rows by copying an existing row and editing text.
+- Add new rows above the placeholder rows.
+
 Purpose: quick index of active governance/context specs and their canonical locations.
 
 | Spec | Path | Status | Domain | Notes |
@@ -18,4 +23,3 @@ Purpose: quick index of active governance/context specs and their canonical loca
 | Architecture Master | `docs/02_ARCHITECTURE_MASTER.md` | ACTIVE | OPS/Architecture | System architecture intent and invariants |
 | _(placeholder)_ | `docs/...` | TBD | TBD | Future spec |
 | _(placeholder)_ | `docs/...` | TBD | TBD | Future spec |
-
