@@ -17,8 +17,8 @@ export default async function InvitePage({
     if (!token) {
         return (
             <div className="min-h-screen bg-gray-950 text-white flex flex-col items-center justify-center p-6 text-center">
-                <h1 className="text-2xl font-bold text-red-400">Invalid Invite</h1>
-                <p className="mt-2 text-gray-400">The invitation link is missing a token.</p>
+                <h1 className="text-2xl font-bold text-red-400">Invalid Invitation</h1>
+                <p className="mt-2 text-gray-400">No invitation token provided. Please use the link provided in your invite.</p>
                 <Link href="/" className="mt-6 text-emerald-400 hover:underline">Go Home</Link>
             </div>
         );
