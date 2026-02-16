@@ -23,6 +23,7 @@ export default function NewProjectPage() {
                         type="text"
                         name="title"
                         id="title"
+                        data-testid="project-title-input"
                         required
                         className="mt-1 block w-full rounded-lg border border-white/10 bg-white/5 p-2.5 text-white placeholder-gray-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                         placeholder="e.g., Annual Impact Assessment 2026"
@@ -37,6 +38,7 @@ export default function NewProjectPage() {
                         type="text"
                         name="short_code"
                         id="short_code"
+                        data-testid="project-short-code-input"
                         className="mt-1 block w-full rounded-lg border border-white/10 bg-white/5 p-2.5 text-white placeholder-gray-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                         placeholder="e.g., AIA-26"
                     />
@@ -84,6 +86,7 @@ export default function NewProjectPage() {
                 <div className="pt-4">
                     <button
                         type="submit"
+                        data-testid="create-project-button"
                         className="w-full rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-600 transition"
                     >
                         Create Project

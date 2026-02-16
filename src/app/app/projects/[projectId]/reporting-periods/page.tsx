@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getProject, listReportingPeriods, createReportingPeriod, updateReportingPeriod, deleteReportingPeriod } from "../actions";
+import { getProject, listReportingPeriods, createReportingPeriod, deleteReportingPeriod } from "../actions";
 
 interface ReportingPeriodsPageProps {
     params: Promise<{
@@ -84,6 +84,7 @@ export default async function ReportingPeriodsPage({ params }: ReportingPeriodsP
                                     type="text"
                                     name="label"
                                     id="label"
+                                    data-testid="period-label-input"
                                     placeholder="e.g. Q1 2024"
                                     required
                                     className="mt-1 block w-full rounded-lg border border-white/10 bg-white/5 p-2.5 text-white focus:border-emerald-500 focus:outline-none placeholder-gray-600"
@@ -97,6 +98,7 @@ export default async function ReportingPeriodsPage({ params }: ReportingPeriodsP
                                     type="date"
                                     name="start_date"
                                     id="start_date"
+                                    data-testid="period-start-date-input"
                                     required
                                     className="mt-1 block w-full rounded-lg border border-white/10 bg-white/5 p-2.5 text-white focus:border-emerald-500 focus:outline-none"
                                 />
@@ -109,12 +111,14 @@ export default async function ReportingPeriodsPage({ params }: ReportingPeriodsP
                                     type="date"
                                     name="end_date"
                                     id="end_date"
+                                    data-testid="period-end-date-input"
                                     required
                                     className="mt-1 block w-full rounded-lg border border-white/10 bg-white/5 p-2.5 text-white focus:border-emerald-500 focus:outline-none"
                                 />
                             </div>
                             <button
                                 type="submit"
+                                data-testid="add-period-button"
                                 className="w-full rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-600 transition"
                             >
                                 Add Period

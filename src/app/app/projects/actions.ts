@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getActiveTenant } from "@/lib/tenant";
 import { revalidatePath } from "next/cache";
-import { notFound, redirect } from "next/navigation";
+import { redirect } from "next/navigation";
 
 export async function listProjects() {
     const supabase = await createClient();

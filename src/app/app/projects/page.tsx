@@ -10,6 +10,7 @@ export default async function ProjectsPage() {
                 <h1 className="text-2xl font-bold text-white">Projects</h1>
                 <Link
                     href="/app/projects/new"
+                    data-testid="new-project-link"
                     className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-600 transition"
                 >
                     New Project

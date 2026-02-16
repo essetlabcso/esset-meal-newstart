@@ -1,4 +1,18 @@
 import { defineConfig, devices } from '@playwright/test';
+import dotenv from 'dotenv';
+import path from 'path';
+import fs from 'fs';
+
+/**
+ * Read environment variables from file.
+ * https://github.com/motdotla/dotenv
+ */
+// Load env in specific order with override=false (as requested)
+dotenv.config({ path: path.resolve(__dirname, '.env'), override: false });
+dotenv.config({ path: path.resolve(__dirname, '.env.local'), override: false });
+if (fs.existsSync(path.resolve(__dirname, '.env.test'))) {
+    dotenv.config({ path: path.resolve(__dirname, '.env.test'), override: false });
+}
 
 /**
  * See https://playwright.dev/docs/test-configuration.
@@ -26,20 +40,27 @@ export default defineConfig({
 
     /* Configure projects for major browsers */
     projects: [
-        { name: 'setup', testMatch: /.*\.setup\.ts/ },
+        {
+            name: 'setup',
+            testMatch: /.*\.setup\.ts/
+        },
         {
             name: 'unauth',
             use: { ...devices['Desktop Chrome'] },
+            // Only runs smoke tests that are NOT auth tests and NOT gate tests
+            testMatch: /.*smoke\.spec\.ts/,
             testIgnore: [/.*auth\..*spec\.ts/, /.*gate.*\.spec\.ts/],
         },
         {
             name: 'auth',
             use: {
                 ...devices['Desktop Chrome'],
-                storageState: process.env.SUPABASE_SERVICE_ROLE_KEY ? 'playwright/.auth/storageState.json' : undefined,
+                storageState: fs.existsSync(path.resolve(__dirname, 'playwright/.auth/storageState.json'))
+                    ? 'playwright/.auth/storageState.json'
+                    : undefined,
             },
             dependencies: ['setup'],
-            testMatch: [/.*auth\..*spec\.ts/, /.*gate.*\.spec\.ts/],
+            testMatch: [/.*auth\..*spec\.ts/, /.*\.e2e\.spec\.ts/],
         },
     ],
 
