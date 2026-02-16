@@ -22,21 +22,4 @@ test.describe('ESSET MEAL Smoke Tests', () => {
         await expect(page).toHaveURL(/\/auth\/sign-in/);
     });
 
-    // Note: Full end-to-end flow requires a valid session.
-    // These are placeholders/templates for where those tests would go 
-    // once a test user/session injection helper is added.
-
-    test.skip('authenticated flow: create project and toc', async ({ page }) => {
-        // 1. Sign in
-        await page.goto('/auth/sign-in');
-        // ... sign in logic ...
-
-        // 2. Go to projects
-        await page.goto('/app/projects');
-        await expect(page.getByText(/Projects/i)).toBeVisible();
-
-        // 3. Open ToC
-        // ... navigate to toc ...
-        // await expect(page.getByTestId('publish-button')).toBeVisible();
-    });
 });

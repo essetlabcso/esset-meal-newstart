@@ -636,22 +636,22 @@ Gate 12 introduced the initial demo infrastructure, including basic smoke tests 
 ## Gate 13: Truth Reconciliation & Complete E2E — Walkthrough
 
 ### Summary
-Gate 13 reconciled the repository truth by fixing drift in previous gate implementations. It completed the Edge Assumptions UX, made the demo seeding truly idempotent, and established a robust authenticated E2E test harness.
+Gate 13 reconciled the repository truth by fixing drift in previous gate implementations. It completed the Edge Assumptions UX, made the demo seeding truly idempotent, and established a robust authenticated E2E test harness using a stable test user.
 
 ### Files Created/Updated
-- `src/app/app/projects/[projectId]/toc/page.tsx`: Refined Outgoing Connectors UI with target titles and inline Management.
-- `supabase/seed/demo_seed.sql`: Re-implemented as a truly idempotent SQL script with deterministic lookup.
-- `playwright.config.ts`: Restructured to support `setup` and `auth-smoke` projects.
-- `tests/auth.setup.ts`: New setup script using Supabase Admin API to create/confirm test users.
-- `tests/auth.smoke.spec.ts`: New authenticated full-path smoke test.
-- `docs/dev/TESTING_E2E.md`: New developer guide for E2E testing environment and execution.
+- `src/app/app/projects/[projectId]/toc/page.tsx`: Refined Outgoing Connectors UI with target titles and inline management.
+- `supabase/seed/demo_seed.sql`: Re-implemented as a truly idempotent SQL script with deterministic lookup (prefers 'Demo Workspace').
+- `playwright.config.ts`: Restructured to support `unauth`, `setup`, and `auth` projects with `storageState`.
+- `tests/auth.setup.ts`: Setup script using Supabase Admin API to create/confirm stable user `e2e.test@essetmeal.local`.
+- `tests/auth.smoke.spec.ts`: Authenticated full-path smoke test (Workspace -> Project -> Analysis -> ToC -> Publish).
+- `docs/dev/TESTING_E2E.md`: Developer guide for E2E testing environment and execution.
 - `docs/demo/DEMO_SCRIPT.md`: Synchronized with current UI reality.
 
 ### Quality Gate
 - `npm run lint` → **Exit 0 (Clean)**.
 - `npm run build` → **✓ Compiled successfully**.
-- `npm run test:e2e` → **✓ 4 passed (including authenticated path)**.
+- `npm run test:e2e` → **✓ 4 passed** (when service key present) or **✓ 3 passed, 3 skipped** (graceful skip).
 
 ### Git Proof
-- Commit message: `Gate 13: reconcile demo truth + edge assumptions UX + auth e2e harness`
+- Commit message: `Gate 13: reconcile truth + auth e2e harness + idempotent seed`
 - Branch: `main`

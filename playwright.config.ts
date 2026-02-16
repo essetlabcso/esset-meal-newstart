@@ -28,14 +28,15 @@ export default defineConfig({
     projects: [
         { name: 'setup', testMatch: /.*\.setup\.ts/ },
         {
-            name: 'chromium-unauth',
+            name: 'unauth',
             use: { ...devices['Desktop Chrome'] },
-            testIgnore: /.*auth\.smoke\.spec\.ts/, // We will split them
+            testIgnore: /.*auth\.smoke\.spec\.ts/,
         },
         {
-            name: 'chromium-auth',
+            name: 'auth',
             use: {
                 ...devices['Desktop Chrome'],
+                storageState: process.env.SUPABASE_SERVICE_ROLE_KEY ? 'playwright/.auth/storageState.json' : undefined,
             },
             dependencies: ['setup'],
             testMatch: /.*auth\.smoke\.spec\.ts/,

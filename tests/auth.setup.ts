@@ -2,7 +2,7 @@ import { test as setup, expect } from '@playwright/test';
 import { createClient } from '@supabase/supabase-js';
 import * as path from 'path';
 
-const authFile = path.join(__dirname, '../playwright/.auth/user.json');
+const authFile = path.join(__dirname, '../playwright/.auth/storageState.json');
 
 setup('authenticate', async ({ page }) => {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -15,18 +15,28 @@ setup('authenticate', async ({ page }) => {
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    const testEmail = `test-user-${Date.now()}@example.com`;
+    const testEmail = 'e2e.test@essetmeal.local';
     const testPassword = 'Password123!';
 
-    // 1. Create a confirmed user via Admin API
-    const { error } = await supabase.auth.admin.createUser({
-        email: testEmail,
-        password: testPassword,
-        email_confirm: true,
-    });
+    // 1. Ensure test user exists and is confirmed
+    const { data: { users }, error: listError } = await supabase.auth.admin.listUsers();
+    if (listError) throw new Error(`Failed to list users: ${listError.message}`);
 
-    if (error) {
-        throw new Error(`Failed to create test user: ${error.message}`);
+    let user = users.find(u => u.email === testEmail);
+
+    if (!user) {
+        const { data: { user: newUser }, error: createError } = await supabase.auth.admin.createUser({
+            email: testEmail,
+            password: testPassword,
+            email_confirm: true,
+        });
+        if (createError) throw new Error(`Failed to create test user: ${createError.message}`);
+        user = newUser!;
+        console.log(`Created new test user: ${testEmail}`);
+    } else {
+        // Ensure it is confirmed
+        await supabase.auth.admin.updateUserById(user.id, { email_confirm: true });
+        console.log(`Reusing existing test user: ${testEmail}`);
     }
 
     // 2. Perform UI login to capture session
