@@ -89,21 +89,22 @@ export async function publishToc(projectId: string, versionId: string) {
     const supabase = await createClient();
     const tenant = await getActiveTenant(supabase);
 
-    if (!tenant) throw new Error("Unauthorized: No active tenant");
-    if (tenant.role === "member") throw new Error("Unauthorized: Admin role required for publish");
+    if (!tenant) return { error: "Unauthorized: No active tenant" };
+    if (tenant.role === "member") return { error: "Unauthorized: Admin role required for publish" };
     await verifyProjectContext(supabase, projectId, tenant.tenantId);
 
-    const { error } = await supabase.rpc("publish_toc_version", {
+    const { data, error } = await supabase.rpc("publish_toc_version", {
         _tenant_id: tenant.tenantId,
         _project_id: projectId,
         _version_id: versionId
     });
 
     if (error) {
-        throw new Error(`Error publishing ToC: ${error.message}`);
+        return { error: error.message };
     }
 
     revalidatePath(`/app/projects/${projectId}/toc`);
+    return { data };
 }
 
 export async function addNode(

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveTenant } from "@/lib/tenant";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import {
     createTocDraft,
     publishToc,
@@ -19,12 +19,13 @@ interface TocBuilderPageProps {
     searchParams: Promise<{
         snapshot?: string;
         v?: string;
+        error?: string;
     }>;
 }
 
 export default async function TocBuilderPage({ params, searchParams }: TocBuilderPageProps) {
     const { projectId } = await params;
-    const { snapshot: snapshotIdParam, v: selectedVersionId } = await searchParams;
+    const { snapshot: snapshotIdParam, v: selectedVersionId, error: publishError } = await searchParams;
     const supabase = await createClient();
     const tenant = await getActiveTenant(supabase);
 
@@ -202,7 +203,15 @@ export default async function TocBuilderPage({ params, searchParams }: TocBuilde
                             {activeVersion.status === 'DRAFT' && (
                                 <form action={async () => {
                                     "use server"
-                                    await publishToc(projectId, activeVersion.id);
+                                    const result = await publishToc(projectId, activeVersion.id);
+                                    if (result?.error) {
+                                        const params = new URLSearchParams({
+                                            v: activeVersion.id,
+                                            error: result.error,
+                                        });
+                                        redirect(`/app/projects/${projectId}/toc?${params.toString()}`);
+                                    }
+                                    redirect(`/app/projects/${projectId}/toc`);
                                 }}>
                                     <button
                                         data-testid="publish-button"
@@ -249,6 +258,12 @@ export default async function TocBuilderPage({ params, searchParams }: TocBuilde
                     )}
                 </div>
             </div>
+
+            {publishError && (
+                <div className="mb-6 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                    Publish blocked: {publishError}
+                </div>
+            )}
 
             {/* Visual Graph Section */}
             <div className="mb-12">
