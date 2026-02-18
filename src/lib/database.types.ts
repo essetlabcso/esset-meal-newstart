@@ -623,6 +623,7 @@ export type Database = {
         }
         Returns: string
       }
+      create_workspace: { Args: { p_name: string }; Returns: string }
       is_org_admin: { Args: { _org_id: string }; Returns: boolean }
       is_tenant_member: { Args: { _tenant_id: string }; Returns: boolean }
       publish_toc_version: {

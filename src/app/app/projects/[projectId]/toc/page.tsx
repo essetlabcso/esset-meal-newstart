@@ -5,6 +5,7 @@ import { notFound, redirect } from "next/navigation";
 import {
     createTocDraft,
     publishToc,
+    exportMatrixCsv,
     addNode,
     addNodeAssumption,
     addEdgeAssumption,
@@ -20,12 +21,24 @@ interface TocBuilderPageProps {
         snapshot?: string;
         v?: string;
         error?: string;
+        gate_codes?: string;
+        export_hash?: string;
+        export_manifest?: string;
+        export_error?: string;
     }>;
 }
 
 export default async function TocBuilderPage({ params, searchParams }: TocBuilderPageProps) {
     const { projectId } = await params;
-    const { snapshot: snapshotIdParam, v: selectedVersionId, error: publishError } = await searchParams;
+    const {
+        snapshot: snapshotIdParam,
+        v: selectedVersionId,
+        error: publishError,
+        gate_codes: gateCodesParam,
+        export_hash: exportHash,
+        export_manifest: exportManifest,
+        export_error: exportError
+    } = await searchParams;
     const supabase = await createClient();
     const tenant = await getActiveTenant(supabase);
 
@@ -208,6 +221,7 @@ export default async function TocBuilderPage({ params, searchParams }: TocBuilde
                                         const params = new URLSearchParams({
                                             v: activeVersion.id,
                                             error: result.error,
+                                            gate_codes: (result.gateCodes || []).join(","),
                                         });
                                         redirect(`/app/projects/${projectId}/toc?${params.toString()}`);
                                     }
@@ -218,6 +232,36 @@ export default async function TocBuilderPage({ params, searchParams }: TocBuilde
                                         className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-600 transition"
                                     >
                                         Publish
+                                    </button>
+                                </form>
+                            )}
+
+                            {activeVersion.status === 'PUBLISHED' && (
+                                <form action={async () => {
+                                    "use server"
+                                    const result = await exportMatrixCsv(projectId, activeVersion.id);
+                                    if (result?.error) {
+                                        const params = new URLSearchParams({
+                                            v: activeVersion.id,
+                                            export_error: result.error,
+                                        });
+                                        redirect(`/app/projects/${projectId}/toc?${params.toString()}`);
+                                    }
+                                    if (result?.data) {
+                                        const params = new URLSearchParams({
+                                            v: activeVersion.id,
+                                            export_hash: result.data.hash,
+                                            export_manifest: result.data.manifestId,
+                                        });
+                                        redirect(`/app/projects/${projectId}/toc?${params.toString()}`);
+                                    }
+                                    redirect(`/app/projects/${projectId}/toc?v=${activeVersion.id}`);
+                                }}>
+                                    <button
+                                        data-testid="export-matrix-csv-button"
+                                        className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition"
+                                    >
+                                        Export Matrix CSV
                                     </button>
                                 </form>
                             )}
@@ -262,6 +306,25 @@ export default async function TocBuilderPage({ params, searchParams }: TocBuilde
             {publishError && (
                 <div className="mb-6 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
                     Publish blocked: {publishError}
+                    {gateCodesParam && (
+                        <div className="mt-2 text-xs text-red-200">
+                            Gate codes: {gateCodesParam}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {exportError && (
+                <div className="mb-6 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                    Export blocked: {exportError}
+                </div>
+            )}
+
+            {exportHash && exportManifest && (
+                <div className="mb-6 rounded-lg border border-blue-500/30 bg-blue-500/10 px-4 py-3 text-sm text-blue-200">
+                    Matrix CSV exported.
+                    <div className="mt-1 text-xs">Manifest: <span className="font-mono">{exportManifest}</span></div>
+                    <div className="text-xs">SHA-256: <span className="font-mono">{exportHash}</span></div>
                 </div>
             )}
 

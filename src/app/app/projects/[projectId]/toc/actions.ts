@@ -100,11 +100,54 @@ export async function publishToc(projectId: string, versionId: string) {
     });
 
     if (error) {
-        return { error: error.message };
+        const gateCodesMatch = error.message.match(/\[(GA_ERR_[A-Z_0-9,]+)\]/);
+        const gateCodes = gateCodesMatch ? gateCodesMatch[1].split(",") : [];
+        return {
+            error: error.message,
+            gateCodes,
+            details: error.details || null,
+        };
     }
 
     revalidatePath(`/app/projects/${projectId}/toc`);
     return { data };
+}
+
+export async function exportMatrixCsv(projectId: string, versionId: string) {
+    const supabase = await createClient();
+    const tenant = await getActiveTenant(supabase);
+
+    if (!tenant) return { error: "Unauthorized: No active tenant" };
+    await verifyProjectContext(supabase, projectId, tenant.tenantId);
+
+    const { data, error } = await (supabase as unknown as {
+        rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>
+    }).rpc("export_matrix_csv", {
+        _tenant_id: tenant.tenantId,
+        _project_id: projectId,
+        _toc_version_id: versionId,
+        _time_window: { period: "current" },
+        _config_json: { allocation_mode: "contribution" }
+    });
+
+    if (error || !data) {
+        return { error: error?.message || "Export failed" };
+    }
+
+    const payload = data as {
+        manifest_id: string;
+        hash: string;
+        csv_text: string;
+    };
+
+    revalidatePath(`/app/projects/${projectId}/toc`);
+    return {
+        data: {
+            manifestId: payload.manifest_id,
+            hash: payload.hash,
+            csv: payload.csv_text,
+        }
+    };
 }
 
 export async function addNode(
