@@ -1,8 +1,8 @@
 # S0 Sanity Cleanup + Quarantine Report
 
 Date: 2026-02-18  
-Mode: ASK (deterministic)  
-Objective: repo-wide cleanup/quarantine sweep without touching core S0 artifacts.
+Mode: ASK  
+Objective: make repo sanity-clean and drift-resistant by deleting only safe local junk and quarantining only ambiguous non-core files, without touching protected S0 core artifacts.
 
 ## Step 0 Raw Command Outputs
 
@@ -13,117 +13,96 @@ D:/esset-meal-newstart/esset-meal-newstart
 
 ### `git status --porcelain=v1`
 ```text
- M .gitignore
- M docs/PHASE_S0_PROOF_PACK.md
- M docs/RESTART_PACK/S0/00_REPO_SNAPSHOT.md
- M docs/RESTART_PACK/S0/03_TRACEABILITY_S0.md
- M docs/RESTART_PACK/S0/04_PROOF_PACK_TEMPLATE.md
- M src/app/app/projects/[projectId]/toc/actions.ts
- M src/app/app/projects/[projectId]/toc/page.tsx
-?? src/lib/toc/
-?? supabase/migrations/20260218040000_s0_schema_minimum_alignment.sql
-?? supabase/migrations/20260218050000_s0_rls_baseline_no_existence_leaks.sql
-?? supabase/migrations/20260218070000_s0_publish_atomic_rpc.sql
-?? supabase/tests/s0_publish_atomic_transaction.sql
-?? supabase/tests/s0_rls_cross_tenant_delete_zero_rows.sql
-?? supabase/tests/s0_toc_draft_crud_scope.sql
-?? tests/unit/
+(empty)
 ```
 
 ### `git diff --name-only`
 ```text
-.gitignore
-docs/PHASE_S0_PROOF_PACK.md
-docs/RESTART_PACK/S0/00_REPO_SNAPSHOT.md
-docs/RESTART_PACK/S0/03_TRACEABILITY_S0.md
-docs/RESTART_PACK/S0/04_PROOF_PACK_TEMPLATE.md
-src/app/app/projects/[projectId]/toc/actions.ts
-src/app/app/projects/[projectId]/toc/page.tsx
-warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'docs/PHASE_S0_PROOF_PACK.md', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'docs/RESTART_PACK/S0/00_REPO_SNAPSHOT.md', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'docs/RESTART_PACK/S0/03_TRACEABILITY_S0.md', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'docs/RESTART_PACK/S0/04_PROOF_PACK_TEMPLATE.md', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/app/app/projects/[projectId]/toc/actions.ts', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/app/app/projects/[projectId]/toc/page.tsx', LF will be replaced by CRLF the next time Git touches it
+(empty)
 ```
 
 ### `git ls-files --others --exclude-standard`
 ```text
-src/lib/toc/gateAValidator.mjs
-src/lib/toc/publishService.mjs
-supabase/migrations/20260218040000_s0_schema_minimum_alignment.sql
-supabase/migrations/20260218050000_s0_rls_baseline_no_existence_leaks.sql
-supabase/migrations/20260218070000_s0_publish_atomic_rpc.sql
-supabase/tests/s0_publish_atomic_transaction.sql
-supabase/tests/s0_rls_cross_tenant_delete_zero_rows.sql
-supabase/tests/s0_toc_draft_crud_scope.sql
-tests/unit/gateAValidator.test.mjs
-tests/unit/publishService.test.mjs
+(empty)
 ```
 
-### Bucket A presence detection
+## Protected S0 Core Artifact Tracking Check
+
 ```text
-PRESENT_DIR .next
-PRESENT_DIR node_modules
-PRESENT_DIR playwright-report
-PRESENT_DIR test-results
-MISSING_DIR coverage
-D:\esset-meal-newstart\esset-meal-newstart\_WIP_DIFF.patch
-D:\esset-meal-newstart\esset-meal-newstart\_WIP_UNTRACKED.txt
-D:\esset-meal-newstart\esset-meal-newstart\.next\dev\logs\next-development.log
+TRACKED src/lib/toc/gateAValidator.mjs
+TRACKED src/lib/toc/publishService.mjs
+TRACKED supabase/migrations/20260218040000_s0_schema_minimum_alignment.sql
+TRACKED supabase/migrations/20260218050000_s0_rls_baseline_no_existence_leaks.sql
+TRACKED supabase/migrations/20260218070000_s0_publish_atomic_rpc.sql
+TRACKED supabase/tests/s0_publish_atomic_transaction.sql
+TRACKED supabase/tests/s0_rls_cross_tenant_delete_zero_rows.sql
+TRACKED supabase/tests/s0_toc_draft_crud_scope.sql
+TRACKED tests/unit/gateAValidator.test.mjs
+TRACKED tests/unit/publishService.test.mjs
+TRACKED docs/PHASE_S0_PROOF_PACK.md
+TRACKED docs/RESTART_PACK/S0/00_REPO_SNAPSHOT.md
+TRACKED docs/RESTART_PACK/S0/03_TRACEABILITY_S0.md
+TRACKED docs/RESTART_PACK/S0/04_PROOF_PACK_TEMPLATE.md
 ```
 
-## Bucket A (safe local cleanup) and Actions
+## Bucket A Detection and Deletions
 
-Deleted local artifacts:
-- `.next/`
-- `node_modules/`
-- `playwright-report/`
-- `test-results/`
-- `_WIP_DIFF.patch`
-- `_WIP_UNTRACKED.txt`
-- `*.log` artifacts discovered during sweep
-
-Post-cleanup presence check:
+### Presence detection
 ```text
 MISSING_DIR .next
 MISSING_DIR node_modules
 MISSING_DIR playwright-report
 MISSING_DIR test-results
 MISSING_DIR coverage
+No *.log found
+No .DS_Store found
+No Thumbs.db found
+No _WIP_*.patch found
+No _WIP_*.txt found
 ```
 
-## Bucket B (quarantine candidates) and Actions
+### Deletions performed
+- None. No Bucket A artifacts were present.
 
-### Candidate 1: `docs/marketing/LANDING_PAGE_COPY.md`
-- Action: moved to `docs/_QUARANTINE/20260218/docs/marketing/LANDING_PAGE_COPY.md`
-- Why: ambiguous, non-canonical marketing copy; no active references in runtime/proof surfaces
-- Evidence (`rg` before move): no matches under `docs src public` for `LANDING_PAGE_COPY`
+## Bucket B Candidates, Evidence, and Actions
 
-### Candidate 2: `public/brand/legacy/`
-- Action: moved to `docs/_QUARANTINE/20260218/public/brand/legacy/`
-- Why: legacy duplicate/reference-only brand assets; not canonical runtime assets
-- Evidence: branding integration plan marks legacy assets reference-only and non-canonical; runtime points to canonical `/brand/esset-logo-full.svg`
+Matching heuristic outside existing quarantine (`old|backup|copy|tmp|draft|wip|unused|legacy`):
 
-## .gitignore Audit (Bucket A patterns)
-
-No new .gitignore lines were required in this sweep. Required patterns already present:
+- Candidate: `docs/adr/ADR-0005-copy-on-write-versioning.md`
+- `rg` evidence (`docs src public`):
 ```text
-   4: /node_modules
-  14: /coverage
-  15: /playwright-report
-  16: /test-results
-  19: /.next/
-  26: .DS_Store
-  27: Thumbs.db
-  35: *.log
-  36: _WIP_*.patch
-  37: _WIP_*.txt
+docs\01_DECISION_REGISTER.md:11:| [ADR-0005](./adr/ADR-0005-copy-on-write-versioning.md) | Copy-on-Write ToC Versioning | Accepted | 2026-02-14 |
+docs\02_ARCHITECTURE_MASTER.md:39:**Governing ADRs:** ADR-0003, ADR-0005.
+docs\02_ARCHITECTURE_MASTER.md:44:**Governing ADRs:** ADR-0005.
+docs\03_UX_CANON.md:43:**Governing ADRs:** ADR-0003, ADR-0005, ADR-0004, ADR-0002.
+docs\adr\ADR-0005-copy-on-write-versioning.md:1:# ADR-0005: Copy-on-Write ToC Versioning
+```
+- Action: kept in place (referenced canonical ADR).
+
+Quarantine moves in this sweep:
+- None.
+
+## `.gitignore` Audit (Bucket A patterns)
+
+Required patterns present:
+
+```text
+FOUND /.next/
+FOUND /node_modules
+FOUND /playwright-report
+FOUND /test-results
+FOUND /coverage
+FOUND *.log
+FOUND .DS_Store
+FOUND Thumbs.db
+FOUND _WIP_*.patch
+FOUND _WIP_*.txt
 ```
 
-## Final git status --porcelain=v1
+No `.gitignore` updates were required.
+
+## Final `git status --porcelain=v1`
+
 ```text
 (empty)
 ```
-
