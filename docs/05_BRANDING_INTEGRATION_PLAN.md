@@ -39,8 +39,9 @@
 - `esset-logo.png`: High-resolution pixel version.
 
 ### Variants & Legacy
-- `legacy/logo-full.svg`: Previous version logo.
-- `legacy/icon-options/`: Various icon experimentations.
+- Quarantined legacy assets: `docs/_QUARANTINE/20260218/public/brand/legacy/`
+- `legacy/logo-full.svg`: Previous version logo (quarantined path above).
+- `legacy/icon-options/`: Various icon experimentations (quarantined path above).
 
 ---
 
@@ -54,7 +55,7 @@ The following files are the ONLY canonical assets for the New Start:
 | **Nav Header** | `esset-logo-header.svg` | Horizontal usage |
 | **Backgrounds** | `public/brand/esset-meal/` | Approved pattern variants |
 
-Any assets in `public/brand/legacy/` are for reference only and MUST NOT be used in new UI development.
+Any assets in `docs/_QUARANTINE/20260218/public/brand/legacy/` are for reference only and MUST NOT be used in new UI development.
 
 ---
 
