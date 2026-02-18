@@ -21,11 +21,22 @@ Canonical spec (read-only): `docs/enhanced_master_spec_v0_1_18012026.md`
 - `supabase/tests/s0_sec_stop_ship.sql`
 - `supabase/verify/s0_schema_verify.sql`
 
+## Docker Runtime Dependency
+- DB proof is `BLOCKED` without Docker Desktop running.
+- This is a runtime prerequisite, not a code/spec failure.
+- When Docker Desktop is available, run the DB proof suite normally.
+
 ## Runbook
 ```powershell
+docker info *> $null
+if ($LASTEXITCODE -ne 0) {
+  Write-Output "DOCKER_NOT_RUNNING: DB proofs are blocked"
+  throw "DB proof run blocked: Docker Desktop is required."
+}
+
 npx supabase db reset
 $DB_CONTAINER = docker ps --format "{{.Names}}" | Where-Object { $_ -like "supabase_db_*" } | Select-Object -First 1
-if (-not $DB_CONTAINER) { throw "Supabase DB container not found. Start Docker + Supabase first." }
+if (-not $DB_CONTAINER) { throw "Supabase DB container not found after reset. DB proofs are blocked." }
 docker exec -i $DB_CONTAINER psql -U postgres -d postgres -f supabase/verify/s0_schema_verify.sql
 docker exec -i $DB_CONTAINER psql -U postgres -d postgres -f supabase/tests/toc_gate_a_publish.sql
 docker exec -i $DB_CONTAINER psql -U postgres -d postgres -f supabase/tests/s0_toc_gate_a_full.sql
