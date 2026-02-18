@@ -21,27 +21,7 @@ Paste exact commands executed and keep order identical to `docs/PHASE_S0_PROOF_P
 
 ```powershell
 npx supabase db reset
-
-# Deterministic DB container detection (PowerShell)
-$DB_CONTAINER = docker ps --format "{{.Names}}" |
-  Where-Object { $_ -like "supabase_db_*" } |
-  Select-Object -First 1
-if (-not $DB_CONTAINER) { throw "Supabase DB container not found. Start Docker + Supabase first." }
-
-docker exec -i $DB_CONTAINER psql -U postgres -d postgres -f supabase/verify/s0_schema_verify.sql
-docker exec -i $DB_CONTAINER psql -U postgres -d postgres -f supabase/tests/toc_gate_a_publish.sql
-docker exec -i $DB_CONTAINER psql -U postgres -d postgres -f supabase/tests/s0_toc_gate_a_full.sql
-docker exec -i $DB_CONTAINER psql -U postgres -d postgres -f supabase/tests/s0_toc_projection_contract.sql
-docker exec -i $DB_CONTAINER psql -U postgres -d postgres -f supabase/tests/s0_export_manifest_hash.sql
-docker exec -i $DB_CONTAINER psql -U postgres -d postgres -f supabase/tests/s0_sec_stop_ship.sql
-
-npm run lint
-npm run build
-
-npx playwright test tests/gate23_toc_publish.e2e.spec.ts --project=auth
-npx playwright test tests/gate22_wks_prj_context.e2e.spec.ts --project=auth
-npx playwright test tests/s0_export_auth.e2e.spec.ts --project=auth
-
+# (DB tests below require Docker Desktop running)
 node scripts/s0_spec_drift_check.mjs
 ```
 
@@ -49,12 +29,12 @@ node scripts/s0_spec_drift_check.mjs
 | Step | PASS/FAIL | Evidence Snippet |
 |---|---|---|
 | `npx supabase db reset` |  |  |
-| `... s0_schema_verify.sql` |  |  |
-| `... toc_gate_a_publish.sql` |  |  |
-| `... s0_toc_gate_a_full.sql` |  |  |
-| `... s0_toc_projection_contract.sql` |  |  |
-| `... s0_export_manifest_hash.sql` |  |  |
-| `... s0_sec_stop_ship.sql` |  |  |
+| `docker exec -i $DB_CONTAINER psql -U postgres -d postgres -f supabase/verify/s0_schema_verify.sql` |  |  |
+| `docker exec -i $DB_CONTAINER psql -U postgres -d postgres -f supabase/tests/toc_gate_a_publish.sql` |  |  |
+| `docker exec -i $DB_CONTAINER psql -U postgres -d postgres -f supabase/tests/s0_toc_gate_a_full.sql` |  |  |
+| `docker exec -i $DB_CONTAINER psql -U postgres -d postgres -f supabase/tests/s0_toc_projection_contract.sql` |  |  |
+| `docker exec -i $DB_CONTAINER psql -U postgres -d postgres -f supabase/tests/s0_export_manifest_hash.sql` |  |  |
+| `docker exec -i $DB_CONTAINER psql -U postgres -d postgres -f supabase/tests/s0_sec_stop_ship.sql` |  |  |
 | `npm run lint` |  |  |
 | `npm run build` |  |  |
 | `gate23_toc_publish.e2e.spec.ts` |  |  |
