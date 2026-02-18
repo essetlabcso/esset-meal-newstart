@@ -2,7 +2,7 @@
 
 Date: 2026-02-18  
 Mode: ASK  
-Objective: make repo sanity-clean and drift-resistant by deleting only safe local junk and quarantining only ambiguous non-core files, without touching protected S0 core artifacts.
+Objective: keep repo sanity-clean and drift-resistant by deleting only safe local junk (Bucket A), quarantining only ambiguous non-core files with evidence checks (Bucket B), and not touching protected S0 core artifacts.
 
 ## Step 0 Raw Command Outputs
 
@@ -45,7 +45,7 @@ TRACKED docs/RESTART_PACK/S0/03_TRACEABILITY_S0.md
 TRACKED docs/RESTART_PACK/S0/04_PROOF_PACK_TEMPLATE.md
 ```
 
-## Bucket A Detection and Deletions
+## Bucket A Presence Detection + Deletions
 
 ### Presence detection
 ```text
@@ -54,38 +54,33 @@ MISSING_DIR node_modules
 MISSING_DIR playwright-report
 MISSING_DIR test-results
 MISSING_DIR coverage
-No *.log found
-No .DS_Store found
-No Thumbs.db found
-No _WIP_*.patch found
-No _WIP_*.txt found
+No *.log matches (empty output)
+No .DS_Store/Thumbs.db/_WIP_*.patch/_WIP_*.txt matches (empty output)
 ```
+
+### Tracked-path safety check
+- No Bucket A targets were found, so no deletion candidates required `git ls-files -- <path>` verification.
 
 ### Deletions performed
-- None. No Bucket A artifacts were present.
-
-## Bucket B Candidates, Evidence, and Actions
-
-Matching heuristic outside existing quarantine (`old|backup|copy|tmp|draft|wip|unused|legacy`):
-
-- Candidate: `docs/adr/ADR-0005-copy-on-write-versioning.md`
-- `rg` evidence (`docs src public`):
-```text
-docs\01_DECISION_REGISTER.md:11:| [ADR-0005](./adr/ADR-0005-copy-on-write-versioning.md) | Copy-on-Write ToC Versioning | Accepted | 2026-02-14 |
-docs\02_ARCHITECTURE_MASTER.md:39:**Governing ADRs:** ADR-0003, ADR-0005.
-docs\02_ARCHITECTURE_MASTER.md:44:**Governing ADRs:** ADR-0005.
-docs\03_UX_CANON.md:43:**Governing ADRs:** ADR-0003, ADR-0005, ADR-0004, ADR-0002.
-docs\adr\ADR-0005-copy-on-write-versioning.md:1:# ADR-0005: Copy-on-Write ToC Versioning
-```
-- Action: kept in place (referenced canonical ADR).
-
-Quarantine moves in this sweep:
 - None.
 
-## `.gitignore` Audit (Bucket A patterns)
+## Bucket B Candidates + Evidence + Actions
 
-Required patterns present:
+Scan scope and filters:
+- Pattern: `old|backup|tmp|draft|wip|unused|legacy|[-_]copy`
+- Excluded: `.git/`, `docs/_QUARANTINE/`, protected S0 list, `docs/adr/*` entries referenced in `docs/01_DECISION_REGISTER.md`.
 
+Result:
+```text
+No candidates found after exclusions.
+```
+
+Quarantine moves:
+- None.
+
+## `.gitignore` Audit
+
+Required patterns check:
 ```text
 FOUND /.next/
 FOUND /node_modules
@@ -99,7 +94,8 @@ FOUND _WIP_*.patch
 FOUND _WIP_*.txt
 ```
 
-No `.gitignore` updates were required.
+Changes to `.gitignore`:
+- None required.
 
 ## Final `git status --porcelain=v1`
 
