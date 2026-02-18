@@ -27,3 +27,55 @@ jobs:
 
     - name: Build
       run: npm run build
+
+  s0-db-proofs:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Use Node.js 20
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Docker preflight
+      id: docker_preflight
+      shell: bash
+      run: |
+        if docker info > /dev/null 2>&1; then
+          echo "db_proofs_mode=run" >> "$GITHUB_OUTPUT"
+          echo "Docker runtime available: DB proofs will run." | tee -a "$GITHUB_STEP_SUMMARY"
+        else
+          echo "db_proofs_mode=skip" >> "$GITHUB_OUTPUT"
+          echo "DB proofs skipped: Docker runtime is not available on this runner." | tee -a "$GITHUB_STEP_SUMMARY"
+        fi
+
+    - name: Run S0 DB proof suite
+      if: steps.docker_preflight.outputs.db_proofs_mode == 'run'
+      shell: bash
+      run: |
+        npx supabase start
+        npx supabase db reset
+        DB_CONTAINER="$(docker ps --format "{{.Names}}" | grep -m1 '^supabase_db_')"
+        if [ -z "$DB_CONTAINER" ]; then
+          echo "Supabase DB container not found after reset."
+          exit 1
+        fi
+        docker exec -i "$DB_CONTAINER" psql -U postgres -d postgres -f supabase/verify/s0_schema_verify.sql
+        docker exec -i "$DB_CONTAINER" psql -U postgres -d postgres -f supabase/tests/toc_gate_a_publish.sql
+        docker exec -i "$DB_CONTAINER" psql -U postgres -d postgres -f supabase/tests/s0_toc_gate_a_full.sql
+        docker exec -i "$DB_CONTAINER" psql -U postgres -d postgres -f supabase/tests/s0_toc_projection_contract.sql
+        docker exec -i "$DB_CONTAINER" psql -U postgres -d postgres -f supabase/tests/s0_export_manifest_hash.sql
+        docker exec -i "$DB_CONTAINER" psql -U postgres -d postgres -f supabase/tests/s0_sec_stop_ship.sql
+        docker exec -i "$DB_CONTAINER" psql -U postgres -d postgres -f supabase/tests/s0_rls_cross_tenant_delete_zero_rows.sql
+
+    - name: Mark DB proofs skipped
+      if: steps.docker_preflight.outputs.db_proofs_mode == 'skip'
+      shell: bash
+      run: |
+        echo "DB proofs status: SKIPPED (Docker runtime missing)." | tee -a "$GITHUB_STEP_SUMMARY"
