@@ -6,10 +6,65 @@ import { createClient } from "@/lib/supabase/server";
 import { getActiveTenant } from "@/lib/tenant";
 import { revalidatePath } from "next/cache";
 
+type DraftNodeType = "GOAL" | "OUTCOME" | "OUTPUT" | "ACTIVITY";
+type DraftEdgeKind = "causal" | "secondary_link" | "feedback";
+type DraftEdgeConfidence = "high" | "medium" | "low";
+type DraftEdgeRiskFlag = "none" | "high_risk";
+
+type CrudErrorCode = "NOT_FOUND" | "FORBIDDEN" | "VALIDATION" | "CONFLICT";
+
+type CrudResult<T> =
+    | { ok: true; data: T }
+    | { ok: false; code: CrudErrorCode; message: string };
+
+interface ScopedProject {
+    tenantId: string;
+    role: string;
+}
+
+interface DraftVersionRecord {
+    id: string;
+    status: string;
+}
+
+interface UnsafeSupabase {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    from: (table: string) => any;
+    rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string; details?: string } | null }>;
+}
+
+const NODE_TYPES: DraftNodeType[] = ["GOAL", "OUTCOME", "OUTPUT", "ACTIVITY"];
+const EDGE_KINDS: DraftEdgeKind[] = ["causal", "secondary_link", "feedback"];
+
+function toUnsafeClient(supabase: SupabaseClient<Database>): UnsafeSupabase {
+    return supabase as unknown as UnsafeSupabase;
+}
+
+function ok<T>(data: T): CrudResult<T> {
+    return { ok: true, data };
+}
+
+function fail<T>(code: CrudErrorCode, message: string): CrudResult<T> {
+    return { ok: false, code, message };
+}
+
+function isNodeType(value: string): value is DraftNodeType {
+    return NODE_TYPES.includes(value as DraftNodeType);
+}
+
+function isEdgeKind(value: string): value is DraftEdgeKind {
+    return EDGE_KINDS.includes(value as DraftEdgeKind);
+}
+
 /**
  * Utility to verify project exists and belongs to the active tenant.
+ * Cross-org access resolves to "not found" semantics.
  */
-async function verifyProjectContext(supabase: SupabaseClient<Database>, projectId: string, tenantId: string) {
+async function verifyProjectContext(
+    supabase: SupabaseClient<Database>,
+    projectId: string,
+    tenantId: string
+) {
     const { data: project, error } = await supabase
         .from("projects")
         .select("id")
@@ -18,8 +73,30 @@ async function verifyProjectContext(supabase: SupabaseClient<Database>, projectI
         .single();
 
     if (error || !project) {
-        throw new Error("Unauthorized: Project context invalid");
+        throw new Error("Not found");
     }
+}
+
+async function resolveProjectScope(
+    supabase: SupabaseClient<Database>,
+    projectId: string
+): Promise<CrudResult<ScopedProject>> {
+    const tenant = await getActiveTenant(supabase);
+    if (!tenant) return fail("FORBIDDEN", "Unauthorized: No active tenant");
+
+    const { data: project, error } = await supabase
+        .from("projects")
+        .select("id")
+        .eq("id", projectId)
+        .eq("tenant_id", tenant.tenantId)
+        .maybeSingle();
+
+    if (error || !project) return fail("NOT_FOUND", "Project not found");
+
+    return ok({
+        tenantId: tenant.tenantId,
+        role: tenant.role,
+    });
 }
 
 /**
@@ -48,15 +125,475 @@ async function assertEditableContext(
         .eq("tenant_id", tenant.tenantId)
         .single();
 
-    if (error || !version) {
-        throw new Error("Unauthorized: ToC version context invalid");
-    }
-
-    if (version.status !== "DRAFT") {
-        throw new Error("Immutable: Cannot modify a published version");
+    if (error || !version || version.status !== "DRAFT") {
+        throw new Error("Not found");
     }
 
     return tenant;
+}
+
+async function resolveDraftWriteScope(
+    supabase: SupabaseClient<Database>,
+    projectId: string,
+    versionId: string
+): Promise<CrudResult<ScopedProject & { version: DraftVersionRecord }>> {
+    const scope = await resolveProjectScope(supabase, projectId);
+    if (!scope.ok) return scope;
+
+    if (scope.data.role === "member") {
+        return fail("FORBIDDEN", "Unauthorized: Member role is read-only");
+    }
+
+    const { data: version, error } = await supabase
+        .from("toc_versions")
+        .select("id, status")
+        .eq("id", versionId)
+        .eq("project_id", projectId)
+        .eq("tenant_id", scope.data.tenantId)
+        .maybeSingle();
+
+    if (error || !version || version.status !== "DRAFT") {
+        return fail("NOT_FOUND", "Draft not found");
+    }
+
+    return ok({
+        ...scope.data,
+        version: version as DraftVersionRecord,
+    });
+}
+
+export async function createDraftVersionAction(
+    projectId: string,
+    snapshotId: string,
+    fromVersionId?: string
+): Promise<CrudResult<{ versionId: string }>> {
+    const supabase = await createClient();
+    const scope = await resolveProjectScope(supabase, projectId);
+    if (!scope.ok) return scope;
+
+    const unsafe = toUnsafeClient(supabase);
+
+    const { data: snapshot, error: snapshotError } = await unsafe
+        .from("analysis_snapshots")
+        .select("id")
+        .eq("id", snapshotId)
+        .eq("project_id", projectId)
+        .eq("tenant_id", scope.data.tenantId)
+        .maybeSingle();
+
+    if (snapshotError || !snapshot) {
+        return fail("NOT_FOUND", "Snapshot not found");
+    }
+
+    const { data, error } = await unsafe.rpc("create_toc_draft", {
+        _tenant_id: scope.data.tenantId,
+        _project_id: projectId,
+        _analysis_snapshot_id: snapshotId,
+        _from_version_id: fromVersionId || undefined
+    });
+
+    if (error) {
+        const msg = error.message.toLowerCase();
+        if (msg.includes("draft already exists") || msg.includes("one_draft")) {
+            return fail("CONFLICT", "A draft already exists for this project");
+        }
+        if (msg.includes("not found")) {
+            return fail("NOT_FOUND", "Requested resource not found");
+        }
+        return fail("FORBIDDEN", `Unable to create draft: ${error.message}`);
+    }
+
+    revalidatePath(`/app/projects/${projectId}/toc`);
+    return ok({ versionId: String(data) });
+}
+
+export interface UpsertDraftNodeInput {
+    versionId: string;
+    nodeType: DraftNodeType;
+    title: string;
+    description?: string | null;
+    primaryParentId?: string | null;
+    narrative?: string | null;
+    nodeId?: string;
+}
+
+export async function upsertDraftNodeAction(
+    projectId: string,
+    input: UpsertDraftNodeInput
+): Promise<CrudResult<{ node: Record<string, unknown> }>> {
+    const supabase = await createClient();
+    const scope = await resolveDraftWriteScope(supabase, projectId, input.versionId);
+    if (!scope.ok) return scope;
+
+    const unsafe = toUnsafeClient(supabase);
+
+    if (!input.title.trim()) {
+        return fail("VALIDATION", "Title is required");
+    }
+
+    if (input.nodeType === "GOAL" && input.primaryParentId) {
+        return fail("VALIDATION", "GOAL nodes cannot have a primary parent");
+    }
+
+    if (input.nodeId && input.primaryParentId && input.nodeId === input.primaryParentId) {
+        return fail("VALIDATION", "Node cannot be its own primary parent");
+    }
+
+    if (input.primaryParentId) {
+        const { data: parentNode, error: parentError } = await unsafe
+            .from("toc_nodes")
+            .select("id")
+            .eq("id", input.primaryParentId)
+            .eq("toc_version_id", input.versionId)
+            .eq("tenant_id", scope.data.tenantId)
+            .maybeSingle();
+
+        if (parentError || !parentNode) {
+            return fail("NOT_FOUND", "Primary parent not found in draft");
+        }
+    }
+
+    let data: Record<string, unknown> | null = null;
+    let writeError: { message: string } | null = null;
+
+    if (input.nodeId) {
+        const { data: existingNode } = await unsafe
+            .from("toc_nodes")
+            .select("id")
+            .eq("id", input.nodeId)
+            .eq("toc_version_id", input.versionId)
+            .eq("tenant_id", scope.data.tenantId)
+            .maybeSingle();
+
+        if (!existingNode) {
+            return fail("NOT_FOUND", "Node not found");
+        }
+
+        const updatePayload: Record<string, unknown> = {
+            node_type: input.nodeType,
+            title: input.title.trim(),
+            description: input.description ?? null,
+            narrative: input.narrative ?? null,
+            primary_parent_id: input.primaryParentId ?? null,
+        };
+
+        const updateResult = await unsafe
+            .from("toc_nodes")
+            .update(updatePayload)
+            .eq("id", input.nodeId)
+            .eq("toc_version_id", input.versionId)
+            .eq("tenant_id", scope.data.tenantId)
+            .select("id,node_type,title,description,narrative,pos_x,pos_y,primary_parent_id,toc_version_id,tenant_id")
+            .maybeSingle();
+
+        data = updateResult.data;
+        writeError = updateResult.error;
+    } else {
+        const { count } = await supabase
+            .from("toc_nodes")
+            .select("*", { count: "exact", head: true })
+            .eq("toc_version_id", input.versionId)
+            .eq("node_type", input.nodeType);
+
+        const typeColumns: Record<DraftNodeType, number> = {
+            GOAL: 0,
+            OUTCOME: 250,
+            OUTPUT: 500,
+            ACTIVITY: 750
+        };
+
+        const insertPayload: Record<string, unknown> = {
+            tenant_id: scope.data.tenantId,
+            toc_version_id: input.versionId,
+            node_type: input.nodeType,
+            title: input.title.trim(),
+            description: input.description ?? null,
+            narrative: input.narrative ?? null,
+            primary_parent_id: input.primaryParentId ?? null,
+            pos_x: typeColumns[input.nodeType],
+            pos_y: (count || 0) * 100,
+        };
+
+        const insertResult = await unsafe
+            .from("toc_nodes")
+            .insert(insertPayload)
+            .select("id,node_type,title,description,narrative,pos_x,pos_y,primary_parent_id,toc_version_id,tenant_id")
+            .maybeSingle();
+
+        data = insertResult.data;
+        writeError = insertResult.error;
+    }
+
+    if (writeError) {
+        return fail("VALIDATION", `Node write failed: ${writeError.message}`);
+    }
+
+    if (!data) {
+        return fail("NOT_FOUND", "Node not found");
+    }
+
+    revalidatePath(`/app/projects/${projectId}/toc`);
+    return ok({ node: data });
+}
+
+export interface AddDraftEdgeInput {
+    versionId: string;
+    sourceNodeId: string;
+    targetNodeId: string;
+    edgeKind: DraftEdgeKind;
+    edgeType?: string;
+    mechanism?: string | null;
+    confidence?: DraftEdgeConfidence;
+    riskFlag?: DraftEdgeRiskFlag;
+    sentinelIndicatorId?: string | null;
+}
+
+export async function addDraftEdgeAction(
+    projectId: string,
+    input: AddDraftEdgeInput
+): Promise<CrudResult<{ edge: Record<string, unknown> }>> {
+    const supabase = await createClient();
+    const scope = await resolveDraftWriteScope(supabase, projectId, input.versionId);
+    if (!scope.ok) return scope;
+
+    if (input.sourceNodeId === input.targetNodeId) {
+        return fail("VALIDATION", "Source and target must be different");
+    }
+
+    const unsafe = toUnsafeClient(supabase);
+
+    const { data: nodes, error: nodeError } = await unsafe
+        .from("toc_nodes")
+        .select("id")
+        .eq("toc_version_id", input.versionId)
+        .eq("tenant_id", scope.data.tenantId)
+        .in("id", [input.sourceNodeId, input.targetNodeId]);
+
+    const nodeArray = Array.isArray(nodes) ? nodes : [];
+    if (nodeError || nodeArray.length !== 2) {
+        return fail("NOT_FOUND", "Source/target node not found in draft");
+    }
+
+    const existingEdgeResult = await unsafe
+        .from("toc_edges")
+        .select("id,source_node_id,target_node_id,edge_type,edge_kind")
+        .eq("toc_version_id", input.versionId)
+        .eq("tenant_id", scope.data.tenantId)
+        .eq("source_node_id", input.sourceNodeId)
+        .eq("target_node_id", input.targetNodeId)
+        .eq("edge_kind", input.edgeKind)
+        .maybeSingle();
+
+    if (existingEdgeResult.data) {
+        return ok({ edge: existingEdgeResult.data });
+    }
+
+    const insertPayload: Record<string, unknown> = {
+        tenant_id: scope.data.tenantId,
+        toc_version_id: input.versionId,
+        source_node_id: input.sourceNodeId,
+        target_node_id: input.targetNodeId,
+        edge_type: input.edgeType || "CONTRIBUTES_TO",
+        edge_kind: input.edgeKind,
+        mechanism: input.mechanism ?? null,
+        confidence: input.confidence || "medium",
+        risk_flag: input.riskFlag || "none",
+        sentinel_indicator_id: input.sentinelIndicatorId ?? null,
+    };
+
+    const { data: edge, error } = await unsafe
+        .from("toc_edges")
+        .insert(insertPayload)
+        .select("id,source_node_id,target_node_id,edge_type,edge_kind,mechanism,confidence,risk_flag,sentinel_indicator_id")
+        .maybeSingle();
+
+    if (error) {
+        return fail("VALIDATION", `Edge write failed: ${error.message}`);
+    }
+
+    if (!edge) {
+        return fail("NOT_FOUND", "Edge not found");
+    }
+
+    revalidatePath(`/app/projects/${projectId}/toc`);
+    return ok({ edge });
+}
+
+export interface TocDraftReadPayload {
+    draft: Record<string, unknown>;
+    graph: {
+        nodes: Array<Record<string, unknown>>;
+        edges: Array<Record<string, unknown>>;
+    };
+    matrix: {
+        rows: Array<Record<string, unknown>>;
+    };
+    wizard: {
+        goal_node_id: string | null;
+        counts: Record<DraftNodeType, number>;
+    };
+}
+
+export async function readDraftPayloadAction(
+    projectId: string,
+    versionId?: string
+): Promise<CrudResult<TocDraftReadPayload>> {
+    const supabase = await createClient();
+    const scope = await resolveProjectScope(supabase, projectId);
+    if (!scope.ok) return scope;
+
+    const unsafe = toUnsafeClient(supabase);
+
+    let versionQuery = unsafe
+        .from("toc_versions")
+        .select("id,project_id,tenant_id,status,version_number,version_label,analysis_snapshot_id,created_at")
+        .eq("tenant_id", scope.data.tenantId)
+        .eq("project_id", projectId)
+        .eq("status", "DRAFT");
+
+    if (versionId) {
+        versionQuery = versionQuery.eq("id", versionId);
+    }
+
+    const { data: versionRows, error: versionError } = await versionQuery
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+    const draftRow = Array.isArray(versionRows) ? versionRows[0] : null;
+    if (versionError || !draftRow) {
+        return fail("NOT_FOUND", "Draft not found");
+    }
+
+    const draftId = String(draftRow.id);
+
+    const [nodesResult, edgesResult, nodeAssumptionsResult, edgeAssumptionsResult, projectionResult] =
+        await Promise.all([
+            unsafe
+                .from("toc_nodes")
+                .select("id,node_type,title,description,narrative,pos_x,pos_y,primary_parent_id,primary_path_key")
+                .eq("toc_version_id", draftId)
+                .eq("tenant_id", scope.data.tenantId),
+            unsafe
+                .from("toc_edges")
+                .select("id,source_node_id,target_node_id,edge_type,edge_kind,mechanism,confidence,risk_flag,sentinel_indicator_id")
+                .eq("toc_version_id", draftId)
+                .eq("tenant_id", scope.data.tenantId),
+            unsafe
+                .from("toc_assumptions")
+                .select("id,node_id,assumption_text,risk_level")
+                .eq("toc_version_id", draftId)
+                .eq("tenant_id", scope.data.tenantId),
+            unsafe
+                .from("toc_edge_assumptions")
+                .select("id,edge_id,assumption_text,risk_level")
+                .eq("toc_version_id", draftId)
+                .eq("tenant_id", scope.data.tenantId),
+            unsafe
+                .from("toc_projections")
+                .select("node_id,path_key,is_ghost,source_edge_id")
+                .eq("toc_version_id", draftId)
+                .eq("tenant_id", scope.data.tenantId),
+        ]);
+
+    if (nodesResult.error || edgesResult.error || nodeAssumptionsResult.error || edgeAssumptionsResult.error || projectionResult.error) {
+        return fail("FORBIDDEN", "Unable to load draft payload");
+    }
+
+    const nodeRows: Array<Record<string, unknown>> = Array.isArray(nodesResult.data) ? nodesResult.data as Array<Record<string, unknown>> : [];
+    const edgeRows: Array<Record<string, unknown>> = Array.isArray(edgesResult.data) ? edgesResult.data as Array<Record<string, unknown>> : [];
+    const nodeAssumptions: Array<Record<string, unknown>> = Array.isArray(nodeAssumptionsResult.data) ? nodeAssumptionsResult.data as Array<Record<string, unknown>> : [];
+    const edgeAssumptions: Array<Record<string, unknown>> = Array.isArray(edgeAssumptionsResult.data) ? edgeAssumptionsResult.data as Array<Record<string, unknown>> : [];
+    const projections: Array<Record<string, unknown>> = Array.isArray(projectionResult.data) ? projectionResult.data as Array<Record<string, unknown>> : [];
+
+    const nodeAssumptionMap = new Map<string, Array<Record<string, unknown>>>();
+    for (const row of nodeAssumptions) {
+        const nodeId = String(row.node_id);
+        const list = nodeAssumptionMap.get(nodeId) || [];
+        list.push(row);
+        nodeAssumptionMap.set(nodeId, list);
+    }
+
+    const edgeAssumptionMap = new Map<string, Array<Record<string, unknown>>>();
+    for (const row of edgeAssumptions) {
+        const edgeId = String(row.edge_id);
+        const list = edgeAssumptionMap.get(edgeId) || [];
+        list.push(row);
+        edgeAssumptionMap.set(edgeId, list);
+    }
+
+    const nodesWithAssumptions: Array<Record<string, unknown>> = nodeRows.map((node: Record<string, unknown>) => ({
+        ...node,
+        toc_assumptions: nodeAssumptionMap.get(String(node.id)) || [],
+    }));
+
+    const edgesWithAssumptions: Array<Record<string, unknown>> = edgeRows.map((edge: Record<string, unknown>) => ({
+        ...edge,
+        toc_edge_assumptions: edgeAssumptionMap.get(String(edge.id)) || [],
+    }));
+
+    const nodeById = new Map<string, Record<string, unknown>>();
+    for (const node of nodesWithAssumptions) {
+        nodeById.set(String(node.id), node);
+    }
+
+    const matrixRows = (projections.length > 0 ? projections : nodesWithAssumptions.map((node: Record<string, unknown>) => ({
+        node_id: node.id,
+        path_key: Array.isArray(node.primary_path_key) && node.primary_path_key.length > 0
+            ? node.primary_path_key
+            : [node.id],
+        is_ghost: false,
+        source_edge_id: null,
+    })))
+        .map((row: Record<string, unknown>) => {
+            const node = nodeById.get(String(row.node_id));
+            const path = Array.isArray(row.path_key) ? row.path_key : [];
+            return {
+                node_id: row.node_id,
+                node_type: node?.node_type || null,
+                node_title: node?.title || null,
+                path_key: path,
+                path_display: path.map(String).join(">"),
+                is_ghost: Boolean(row.is_ghost),
+                source_edge_id: row.source_edge_id || null,
+            };
+        })
+        .sort((a, b) => {
+            const byPath = String(a.path_display).localeCompare(String(b.path_display));
+            if (byPath !== 0) return byPath;
+            if (a.is_ghost !== b.is_ghost) return a.is_ghost ? 1 : -1;
+            return String(a.node_id).localeCompare(String(b.node_id));
+        });
+
+    const counts: Record<DraftNodeType, number> = {
+        GOAL: 0,
+        OUTCOME: 0,
+        OUTPUT: 0,
+        ACTIVITY: 0,
+    };
+
+    let goalNodeId: string | null = null;
+    for (const node of nodesWithAssumptions) {
+        const type = String(node.node_type);
+        if (isNodeType(type)) {
+            counts[type] += 1;
+            if (type === "GOAL" && !goalNodeId) goalNodeId = String(node.id);
+        }
+    }
+
+    return ok({
+        draft: draftRow,
+        graph: {
+            nodes: nodesWithAssumptions,
+            edges: edgesWithAssumptions,
+        },
+        matrix: {
+            rows: matrixRows,
+        },
+        wizard: {
+            goal_node_id: goalNodeId,
+            counts,
+        },
+    });
 }
 
 export async function createTocDraft(
@@ -64,53 +601,122 @@ export async function createTocDraft(
     snapshotId: string,
     fromVersionId?: string
 ) {
-    const supabase = await createClient();
-    const tenant = await getActiveTenant(supabase);
-
-    if (!tenant) throw new Error("Unauthorized: No active tenant");
-    await verifyProjectContext(supabase, projectId, tenant.tenantId);
-
-    const { data: newVersionId, error } = await supabase.rpc("create_toc_draft", {
-        _tenant_id: tenant.tenantId,
-        _project_id: projectId,
-        _analysis_snapshot_id: snapshotId,
-        _from_version_id: fromVersionId || undefined
-    });
-
-    if (error) {
-        throw new Error(`Error creating ToC draft: ${error.message}`);
+    const result = await createDraftVersionAction(projectId, snapshotId, fromVersionId);
+    if (!result.ok) {
+        throw new Error(result.message);
     }
-
-    revalidatePath(`/app/projects/${projectId}/toc`);
-    return newVersionId;
+    return result.data.versionId;
 }
 
 export async function publishToc(projectId: string, versionId: string) {
     const supabase = await createClient();
-    const tenant = await getActiveTenant(supabase);
+    const scope = await resolveProjectScope(supabase, projectId);
+    if (!scope.ok || scope.data.role === "member") {
+        return {
+            error: "Not found",
+            gateCodes: [],
+            gateResults: [],
+        };
+    }
 
-    if (!tenant) return { error: "Unauthorized: No active tenant" };
-    if (tenant.role === "member") return { error: "Unauthorized: Admin role required for publish" };
-    await verifyProjectContext(supabase, projectId, tenant.tenantId);
+    const unsafe = toUnsafeClient(supabase);
+    const { publishDraftWithGateA } = await import("@/lib/toc/publishService.mjs");
 
-    const { data, error } = await supabase.rpc("publish_toc_version", {
-        _tenant_id: tenant.tenantId,
-        _project_id: projectId,
-        _version_id: versionId
+    const publishResult = await publishDraftWithGateA({
+        loadDraftPayload: async () => {
+            const { data: draft, error: draftError } = await unsafe
+                .from("toc_versions")
+                .select("id")
+                .eq("id", versionId)
+                .eq("project_id", projectId)
+                .eq("tenant_id", scope.data.tenantId)
+                .eq("status", "DRAFT")
+                .maybeSingle();
+
+            if (draftError || !draft) {
+                return { found: false };
+            }
+
+            const [nodesResult, edgesResult, rlsResult] = await Promise.all([
+                unsafe
+                    .from("toc_nodes")
+                    .select("id,node_type,primary_parent_id")
+                    .eq("toc_version_id", versionId)
+                    .eq("tenant_id", scope.data.tenantId),
+                unsafe
+                    .from("toc_edges")
+                    .select("id,source_node_id,target_node_id,edge_kind,mechanism,confidence,risk_flag,sentinel_indicator_id")
+                    .eq("toc_version_id", versionId)
+                    .eq("tenant_id", scope.data.tenantId),
+                unsafe.rpc("ga_rls_baseline_ok", {}),
+            ]);
+
+            if (nodesResult.error || edgesResult.error || rlsResult.error) {
+                return { found: false };
+            }
+
+            return {
+                found: true,
+                nodes: Array.isArray(nodesResult.data) ? nodesResult.data : [],
+                edges: Array.isArray(edgesResult.data) ? edgesResult.data : [],
+                rlsBaselineOk: Boolean(rlsResult.data),
+            };
+        },
+        executeAtomicPublish: async () => {
+            const { data, error } = await unsafe.rpc("publish_toc_version_atomic", {
+                _tenant_id: scope.data.tenantId,
+                _project_id: projectId,
+                _version_id: versionId,
+            });
+
+            if (error || !data) {
+                return {
+                    ok: false,
+                    code: "NOT_FOUND",
+                    message: "Draft not found",
+                };
+            }
+
+            const payload = data as {
+                ok?: boolean;
+                code?: string;
+                message?: string;
+            };
+
+            if (payload.ok !== true) {
+                return {
+                    ok: false,
+                    code: payload.code || "NOT_FOUND",
+                    message: payload.message || "Draft not found",
+                };
+            }
+
+            return { ok: true, data };
+        },
     });
 
-    if (error) {
-        const gateCodesMatch = error.message.match(/\[(GA_ERR_[A-Z_0-9,]+)\]/);
-        const gateCodes = gateCodesMatch ? gateCodesMatch[1].split(",") : [];
+    if (!publishResult.ok) {
+        if (publishResult.code === "GA_VALIDATION_FAILED") {
+            const gateCodes = publishResult.violations.map((v: { error_code: string }) => v.error_code);
+            return {
+                error: "Gate A failed",
+                gateCodes,
+                gateResults: publishResult.violations,
+            };
+        }
+
         return {
-            error: error.message,
-            gateCodes,
-            details: error.details || null,
+            error: "Not found",
+            gateCodes: [],
+            gateResults: [],
         };
     }
 
     revalidatePath(`/app/projects/${projectId}/toc`);
-    return { data };
+    return {
+        data: publishResult.data,
+        gateResults: [],
+    };
 }
 
 export async function exportMatrixCsv(projectId: string, versionId: string) {
@@ -155,55 +761,57 @@ export async function addNode(
     versionId: string,
     nodeType: string,
     title: string,
-    description: string
+    description: string,
+    primaryParentId?: string | null
 ) {
-    const supabase = await createClient();
-    const tenant = await assertEditableContext(supabase, projectId, versionId);
-
-    // Get existing nodes of this type in this version for row offset
-    const { count } = await supabase
-        .from("toc_nodes")
-        .select("*", { count: "exact", head: true })
-        .eq("toc_version_id", versionId)
-        .eq("node_type", nodeType);
-
-    const typeColumns: Record<string, number> = {
-        GOAL: 0,
-        OUTCOME: 250,
-        OUTPUT: 500,
-        ACTIVITY: 750
-    };
-
-    const pos_x = typeColumns[nodeType] || 0;
-    const pos_y = (count || 0) * 100;
-
-    const { data, error } = await supabase
-        .from("toc_nodes")
-        .insert({
-            tenant_id: tenant.tenantId,
-            toc_version_id: versionId,
-            node_type: nodeType,
-            title,
-            description,
-            pos_x,
-            pos_y
-        })
-        .select()
-        .single();
-
-    if (error) {
-        throw new Error(`Error adding node: ${error.message}`);
+    if (!isNodeType(nodeType)) {
+        throw new Error("Validation: Invalid node type");
     }
 
-    revalidatePath(`/app/projects/${projectId}/toc`);
-    return data;
+    const result = await upsertDraftNodeAction(projectId, {
+        versionId,
+        nodeType,
+        title,
+        description,
+        primaryParentId: primaryParentId ?? null,
+    });
+
+    if (!result.ok) {
+        throw new Error(result.message);
+    }
+
+    return result.data.node;
+}
+
+export async function updateNode(
+    projectId: string,
+    versionId: string,
+    nodeId: string,
+    nodeType: DraftNodeType,
+    title: string,
+    description: string,
+    primaryParentId?: string | null
+) {
+    const result = await upsertDraftNodeAction(projectId, {
+        versionId,
+        nodeId,
+        nodeType,
+        title,
+        description,
+        primaryParentId: primaryParentId ?? null,
+    });
+
+    if (!result.ok) {
+        throw new Error(result.message);
+    }
+
+    return result.data.node;
 }
 
 export async function deleteNode(projectId: string, versionId: string, nodeId: string) {
     const supabase = await createClient();
     const tenant = await assertEditableContext(supabase, projectId, versionId);
 
-    // 1. Delete connected edges first (source or target)
     const { error: eError } = await supabase
         .from("toc_edges")
         .delete()
@@ -213,7 +821,6 @@ export async function deleteNode(projectId: string, versionId: string, nodeId: s
 
     if (eError) throw new Error(`Error deleting node edges: ${eError.message}`);
 
-    // 2. Delete the node
     const { error: nError } = await supabase
         .from("toc_nodes")
         .delete()
@@ -236,7 +843,6 @@ export async function updateNodePosition(
     const supabase = await createClient();
     const tenant = await assertEditableContext(supabase, projectId, versionId);
 
-    // Update node
     const { error } = await supabase
         .from("toc_nodes")
         .update({ pos_x, pos_y })
@@ -248,7 +854,6 @@ export async function updateNodePosition(
         throw new Error(`Error updating node position: ${error.message}`);
     }
 
-    // Usually avoid full revalidate for drag, but for consistency:
     revalidatePath(`/app/projects/${projectId}/toc`);
 }
 
@@ -257,43 +862,33 @@ export async function addEdge(
     versionId: string,
     sourceId: string,
     targetId: string,
-    edgeType: string = "CONTRIBUTES_TO"
+    edgeType: string = "CONTRIBUTES_TO",
+    edgeKind: DraftEdgeKind = "causal"
 ) {
-    const supabase = await createClient();
-    const tenant = await assertEditableContext(supabase, projectId, versionId);
-
-    if (sourceId === targetId) throw new Error("Validation: Source and target must be different");
-
-    // Check for existing edge to prevent duplicates
-    const { data: existing } = await supabase
-        .from("toc_edges")
-        .select("id, source_node_id, target_node_id, edge_type")
-        .eq("toc_version_id", versionId)
-        .eq("source_node_id", sourceId)
-        .eq("target_node_id", targetId)
-        .eq("tenant_id", tenant.tenantId)
-        .maybeSingle();
-
-    if (existing) return existing;
-
-    const { data, error } = await supabase
-        .from("toc_edges")
-        .insert({
-            tenant_id: tenant.tenantId,
-            toc_version_id: versionId,
-            source_node_id: sourceId,
-            target_node_id: targetId,
-            edge_type: edgeType
-        })
-        .select("id, source_node_id, target_node_id, edge_type")
-        .single();
-
-    if (error) {
-        throw new Error(`Error adding edge: ${error.message}`);
+    if (!isEdgeKind(edgeKind)) {
+        throw new Error("Validation: Invalid edge kind");
     }
 
-    revalidatePath(`/app/projects/${projectId}/toc`);
-    return data;
+    const result = await addDraftEdgeAction(projectId, {
+        versionId,
+        sourceNodeId: sourceId,
+        targetNodeId: targetId,
+        edgeType,
+        edgeKind,
+    });
+
+    if (!result.ok) {
+        throw new Error(result.message);
+    }
+
+    const edge = result.data.edge;
+    return {
+        id: String(edge.id),
+        source_node_id: String(edge.source_node_id),
+        target_node_id: String(edge.target_node_id),
+        edge_type: String(edge.edge_type || edgeType),
+        edge_kind: String(edge.edge_kind || edgeKind),
+    };
 }
 
 export async function deleteEdge(projectId: string, versionId: string, edgeId: string) {

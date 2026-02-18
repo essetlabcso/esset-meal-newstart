@@ -24,6 +24,7 @@
 
 # misc
 .DS_Store
+Thumbs.db
 *.pem
 
 # debug
@@ -32,6 +33,8 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 *.log
+_WIP_*.patch
+_WIP_*.txt
 
 # env files
 .env*

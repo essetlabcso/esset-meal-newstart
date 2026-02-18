@@ -7,6 +7,11 @@ Scope: Vertical Slice S0 only (Draft -> Gate A -> Publish -> New Draft -> Snapsh
 - Canonical spec present: `docs/enhanced_master_spec_v0_1_18012026.md`
 - S0 proof pack present: `docs/PHASE_S0_PROOF_PACK.md`
 
+## Sanity Inventory Command Standard (Required)
+- Modified tracked files: `git diff --name-only`
+- Untracked files (full paths): `git ls-files --others --exclude-standard | ForEach-Object { (Resolve-Path $_).Path }`
+- Future sanity reports must use the commands above and include exact file paths.
+
 ## Key Tree View (S0 and Governance Surfaces)
 ```text
 docs/

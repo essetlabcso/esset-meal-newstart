@@ -18,10 +18,26 @@ Canonical source: `docs/enhanced_master_spec_v0_1_18012026.md` (read-only)
 
 ## 2) Runbook Commands (exact)
 Paste exact commands executed and keep order identical to `docs/PHASE_S0_PROOF_PACK.md`.
+DB steps require Docker Desktop running.
 
 ```powershell
 npx supabase db reset
-# (DB tests below require Docker Desktop running)
+$DB_CONTAINER = docker ps --format "{{.Names}}" | Where-Object { $_ -like "supabase_db_*" } | Select-Object -First 1
+if (-not $DB_CONTAINER) { throw "Supabase DB container not found. Start Docker + Supabase first." }
+docker exec -i $DB_CONTAINER psql -U postgres -d postgres -f supabase/verify/s0_schema_verify.sql
+docker exec -i $DB_CONTAINER psql -U postgres -d postgres -f supabase/tests/toc_gate_a_publish.sql
+docker exec -i $DB_CONTAINER psql -U postgres -d postgres -f supabase/tests/s0_toc_gate_a_full.sql
+docker exec -i $DB_CONTAINER psql -U postgres -d postgres -f supabase/tests/s0_toc_projection_contract.sql
+docker exec -i $DB_CONTAINER psql -U postgres -d postgres -f supabase/tests/s0_export_manifest_hash.sql
+docker exec -i $DB_CONTAINER psql -U postgres -d postgres -f supabase/tests/s0_sec_stop_ship.sql
+docker exec -i $DB_CONTAINER psql -U postgres -d postgres -f supabase/tests/s0_rls_cross_tenant_delete_zero_rows.sql
+npm run lint
+npm run build
+# Command to run unit tests
+node --test tests/unit/gateAValidator.test.mjs tests/unit/publishService.test.mjs
+npx playwright test tests/gate23_toc_publish.e2e.spec.ts --project=auth
+npx playwright test tests/gate22_wks_prj_context.e2e.spec.ts --project=auth
+npx playwright test tests/s0_export_auth.e2e.spec.ts --project=auth
 node scripts/s0_spec_drift_check.mjs
 ```
 
@@ -35,11 +51,13 @@ node scripts/s0_spec_drift_check.mjs
 | `docker exec -i $DB_CONTAINER psql -U postgres -d postgres -f supabase/tests/s0_toc_projection_contract.sql` |  |  |
 | `docker exec -i $DB_CONTAINER psql -U postgres -d postgres -f supabase/tests/s0_export_manifest_hash.sql` |  |  |
 | `docker exec -i $DB_CONTAINER psql -U postgres -d postgres -f supabase/tests/s0_sec_stop_ship.sql` |  |  |
+| `docker exec -i $DB_CONTAINER psql -U postgres -d postgres -f supabase/tests/s0_rls_cross_tenant_delete_zero_rows.sql` |  |  |
 | `npm run lint` |  |  |
 | `npm run build` |  |  |
-| `gate23_toc_publish.e2e.spec.ts` |  |  |
-| `gate22_wks_prj_context.e2e.spec.ts` |  |  |
-| `s0_export_auth.e2e.spec.ts` |  |  |
+| `node --test tests/unit/gateAValidator.test.mjs tests/unit/publishService.test.mjs` |  |  |
+| `npx playwright test tests/gate23_toc_publish.e2e.spec.ts --project=auth` |  |  |
+| `npx playwright test tests/gate22_wks_prj_context.e2e.spec.ts --project=auth` |  |  |
+| `npx playwright test tests/s0_export_auth.e2e.spec.ts --project=auth` |  |  |
 | `node scripts/s0_spec_drift_check.mjs` |  |  |
 
 ## 4) Rule-ID Verification Checklist

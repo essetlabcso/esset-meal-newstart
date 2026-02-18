@@ -6,6 +6,7 @@ import {
     createTocDraft,
     publishToc,
     exportMatrixCsv,
+    readDraftPayloadAction,
     addNode,
     addNodeAssumption,
     addEdgeAssumption,
@@ -27,6 +28,34 @@ interface TocBuilderPageProps {
         export_error?: string;
     }>;
 }
+
+type TocNodeView = {
+    id: string;
+    node_type: string;
+    title: string;
+    description: string | null;
+    pos_x: number;
+    pos_y: number;
+    toc_assumptions?: Array<{
+        id: string;
+        assumption_text: string;
+        risk_level: string | null;
+    }>;
+    [key: string]: unknown;
+};
+
+type TocEdgeView = {
+    id: string;
+    source_node_id: string;
+    target_node_id: string;
+    edge_type: string;
+    toc_edge_assumptions?: Array<{
+        id: string;
+        assumption_text: string;
+        risk_level: string | null;
+    }>;
+    [key: string]: unknown;
+};
 
 export default async function TocBuilderPage({ params, searchParams }: TocBuilderPageProps) {
     const { projectId } = await params;
@@ -138,18 +167,34 @@ export default async function TocBuilderPage({ params, searchParams }: TocBuilde
     // --- CASE B: DRAFT/PUBLISHED EDITOR ---
     const isEditable = activeVersion.status === "DRAFT" && tenant.role !== "member";
 
-    // Fetch Nodes and Edges for the active version
-    const { data: nodes } = await supabase
-        .from("toc_nodes")
-        .select("*, toc_assumptions(*)")
-        .eq("toc_version_id", activeVersion.id)
-        .eq("tenant_id", tenant.tenantId);
+    // Draft read is exposed as a single structured payload for Wizard/Graph/Matrix.
+    let nodes: TocNodeView[] = [];
+    let edges: TocEdgeView[] = [];
 
-    const { data: edges } = await supabase
-        .from("toc_edges")
-        .select("*, toc_edge_assumptions(*)")
-        .eq("toc_version_id", activeVersion.id)
-        .eq("tenant_id", tenant.tenantId);
+    if (activeVersion.status === "DRAFT") {
+        const draftPayload = await readDraftPayloadAction(projectId, activeVersion.id);
+        if (draftPayload.ok) {
+            nodes = draftPayload.data.graph.nodes as TocNodeView[];
+            edges = draftPayload.data.graph.edges as TocEdgeView[];
+        }
+    }
+
+    if (nodes.length === 0 || edges.length === 0) {
+        const { data: fallbackNodes } = await supabase
+            .from("toc_nodes")
+            .select("*, toc_assumptions(*)")
+            .eq("toc_version_id", activeVersion.id)
+            .eq("tenant_id", tenant.tenantId);
+
+        const { data: fallbackEdges } = await supabase
+            .from("toc_edges")
+            .select("*, toc_edge_assumptions(*)")
+            .eq("toc_version_id", activeVersion.id)
+            .eq("tenant_id", tenant.tenantId);
+
+        nodes = fallbackNodes || [];
+        edges = fallbackEdges || [];
+    }
 
     // Get latest published for cloning purposes
     const latestPublished = versions?.find(v => v.status === 'PUBLISHED');

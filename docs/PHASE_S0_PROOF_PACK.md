@@ -24,14 +24,19 @@ Canonical spec (read-only): `docs/enhanced_master_spec_v0_1_18012026.md`
 ## Runbook
 ```powershell
 npx supabase db reset
-docker exec -i supabase_db_esset-meal-newstart psql -U postgres -d postgres -f supabase/verify/s0_schema_verify.sql
-docker exec -i supabase_db_esset-meal-newstart psql -U postgres -d postgres -f supabase/tests/toc_gate_a_publish.sql
-docker exec -i supabase_db_esset-meal-newstart psql -U postgres -d postgres -f supabase/tests/s0_toc_gate_a_full.sql
-docker exec -i supabase_db_esset-meal-newstart psql -U postgres -d postgres -f supabase/tests/s0_toc_projection_contract.sql
-docker exec -i supabase_db_esset-meal-newstart psql -U postgres -d postgres -f supabase/tests/s0_export_manifest_hash.sql
-docker exec -i supabase_db_esset-meal-newstart psql -U postgres -d postgres -f supabase/tests/s0_sec_stop_ship.sql
+$DB_CONTAINER = docker ps --format "{{.Names}}" | Where-Object { $_ -like "supabase_db_*" } | Select-Object -First 1
+if (-not $DB_CONTAINER) { throw "Supabase DB container not found. Start Docker + Supabase first." }
+docker exec -i $DB_CONTAINER psql -U postgres -d postgres -f supabase/verify/s0_schema_verify.sql
+docker exec -i $DB_CONTAINER psql -U postgres -d postgres -f supabase/tests/toc_gate_a_publish.sql
+docker exec -i $DB_CONTAINER psql -U postgres -d postgres -f supabase/tests/s0_toc_gate_a_full.sql
+docker exec -i $DB_CONTAINER psql -U postgres -d postgres -f supabase/tests/s0_toc_projection_contract.sql
+docker exec -i $DB_CONTAINER psql -U postgres -d postgres -f supabase/tests/s0_export_manifest_hash.sql
+docker exec -i $DB_CONTAINER psql -U postgres -d postgres -f supabase/tests/s0_sec_stop_ship.sql
+docker exec -i $DB_CONTAINER psql -U postgres -d postgres -f supabase/tests/s0_rls_cross_tenant_delete_zero_rows.sql
 npm run lint
 npm run build
+# Command to run unit tests
+node --test tests/unit/gateAValidator.test.mjs tests/unit/publishService.test.mjs
 npx playwright test tests/gate23_toc_publish.e2e.spec.ts --project=auth
 npx playwright test tests/gate22_wks_prj_context.e2e.spec.ts --project=auth
 npx playwright test tests/s0_export_auth.e2e.spec.ts --project=auth
