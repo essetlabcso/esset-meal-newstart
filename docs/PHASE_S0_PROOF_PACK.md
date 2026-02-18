@@ -24,12 +24,12 @@ Canonical spec (read-only): `docs/enhanced_master_spec_v0_1_18012026.md`
 ## Runbook
 ```powershell
 npx supabase db reset
-npx supabase db query --file supabase/verify/s0_schema_verify.sql
-npx supabase db query --file supabase/tests/toc_gate_a_publish.sql
-npx supabase db query --file supabase/tests/s0_toc_gate_a_full.sql
-npx supabase db query --file supabase/tests/s0_toc_projection_contract.sql
-npx supabase db query --file supabase/tests/s0_export_manifest_hash.sql
-npx supabase db query --file supabase/tests/s0_sec_stop_ship.sql
+docker exec -i supabase_db_esset-meal-newstart psql -U postgres -d postgres -f supabase/verify/s0_schema_verify.sql
+docker exec -i supabase_db_esset-meal-newstart psql -U postgres -d postgres -f supabase/tests/toc_gate_a_publish.sql
+docker exec -i supabase_db_esset-meal-newstart psql -U postgres -d postgres -f supabase/tests/s0_toc_gate_a_full.sql
+docker exec -i supabase_db_esset-meal-newstart psql -U postgres -d postgres -f supabase/tests/s0_toc_projection_contract.sql
+docker exec -i supabase_db_esset-meal-newstart psql -U postgres -d postgres -f supabase/tests/s0_export_manifest_hash.sql
+docker exec -i supabase_db_esset-meal-newstart psql -U postgres -d postgres -f supabase/tests/s0_sec_stop_ship.sql
 npm run lint
 npm run build
 npx playwright test tests/gate23_toc_publish.e2e.spec.ts --project=auth
