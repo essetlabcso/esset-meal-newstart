@@ -538,11 +538,11 @@ begin
 
   insert into public.toc_versions (
     tenant_id, project_id, analysis_snapshot_id, linked_analysis_snapshot_id,
-    status, version_number, created_by, source_version_id
+    status, version_number, version_label, created_by, source_version_id
   )
   values (
     _tenant_id, _project_id, _analysis_snapshot_id, null,
-    'DRAFT', _next_ver, auth.uid(), _from_version_id
+    'DRAFT', _next_ver, format('DRAFT-%s', _next_ver), auth.uid(), _from_version_id
   )
   returning id into _new_version_id;
 
