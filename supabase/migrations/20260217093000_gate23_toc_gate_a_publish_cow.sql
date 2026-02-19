@@ -40,7 +40,9 @@ alter table public.toc_edges
 create unique index if not exists toc_edges_unique_per_version
 on public.toc_edges (toc_version_id, source_node_id, target_node_id, edge_type);
 
-create or replace function public.publish_toc_version(_tenant_id uuid, _project_id uuid, _version_id uuid)
+drop function if exists public.publish_toc_version(uuid, uuid, uuid);
+
+create function public.publish_toc_version(_tenant_id uuid, _project_id uuid, _version_id uuid)
 returns jsonb
 language plpgsql
 security definer
