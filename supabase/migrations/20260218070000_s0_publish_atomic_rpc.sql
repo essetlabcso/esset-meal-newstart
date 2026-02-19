@@ -1,7 +1,5 @@
 -- S0 publish atomic RPC: snapshot freeze + publish + COW draft (no Gate A reads here)
 
-begin;
-
 create or replace function public.publish_toc_version_atomic(
   _tenant_id uuid,
   _project_id uuid,
@@ -113,5 +111,3 @@ exception when others then
   );
 end;
 $$;
-
-commit;
