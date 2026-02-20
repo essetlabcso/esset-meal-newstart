@@ -488,11 +488,11 @@ export async function readDraftPayloadAction(
                 .select("id,edge_id,assumption_text,risk_level")
                 .eq("toc_version_id", draftId)
                 .eq("tenant_id", scope.data.tenantId),
-            unsafe
-                .from("toc_projections")
-                .select("node_id,path_key,is_ghost,source_edge_id")
-                .eq("toc_version_id", draftId)
-                .eq("tenant_id", scope.data.tenantId),
+            unsafe.rpc("read_toc_projection_matrix", {
+                _tenant_id: scope.data.tenantId,
+                _project_id: projectId,
+                _toc_version_id: draftId,
+            }),
         ]);
 
     if (nodesResult.error || edgesResult.error || nodeAssumptionsResult.error || edgeAssumptionsResult.error || projectionResult.error) {
@@ -504,6 +504,13 @@ export async function readDraftPayloadAction(
     const nodeAssumptions: Array<Record<string, unknown>> = Array.isArray(nodeAssumptionsResult.data) ? nodeAssumptionsResult.data as Array<Record<string, unknown>> : [];
     const edgeAssumptions: Array<Record<string, unknown>> = Array.isArray(edgeAssumptionsResult.data) ? edgeAssumptionsResult.data as Array<Record<string, unknown>> : [];
     const projections: Array<Record<string, unknown>> = Array.isArray(projectionResult.data) ? projectionResult.data as Array<Record<string, unknown>> : [];
+
+    const primaryPathByNodeId = new Map<string, Array<unknown>>();
+    for (const row of projections) {
+        if (String(row.row_kind || "") !== "primary") continue;
+        if (!Array.isArray(row.primary_path_key)) continue;
+        primaryPathByNodeId.set(String(row.node_id), row.primary_path_key);
+    }
 
     const nodeAssumptionMap = new Map<string, Array<Record<string, unknown>>>();
     for (const row of nodeAssumptions) {
@@ -521,10 +528,14 @@ export async function readDraftPayloadAction(
         edgeAssumptionMap.set(edgeId, list);
     }
 
-    const nodesWithAssumptions: Array<Record<string, unknown>> = nodeRows.map((node: Record<string, unknown>) => ({
-        ...node,
-        toc_assumptions: nodeAssumptionMap.get(String(node.id)) || [],
-    }));
+    const nodesWithAssumptions: Array<Record<string, unknown>> = nodeRows.map((node: Record<string, unknown>) => {
+        const nodeId = String(node.id);
+        return {
+            ...node,
+            primary_path_key: primaryPathByNodeId.get(nodeId) ?? node.primary_path_key ?? null,
+            toc_assumptions: nodeAssumptionMap.get(nodeId) || [],
+        };
+    });
 
     const edgesWithAssumptions: Array<Record<string, unknown>> = edgeRows.map((edge: Record<string, unknown>) => ({
         ...edge,
@@ -536,32 +547,66 @@ export async function readDraftPayloadAction(
         nodeById.set(String(node.id), node);
     }
 
-    const matrixRows = (projections.length > 0 ? projections : nodesWithAssumptions.map((node: Record<string, unknown>) => ({
-        node_id: node.id,
-        path_key: Array.isArray(node.primary_path_key) && node.primary_path_key.length > 0
+    const matrixRows = (projections.length > 0 ? projections : nodesWithAssumptions.map((node: Record<string, unknown>) => {
+        const nodePath = Array.isArray(node.primary_path_key) && node.primary_path_key.length > 0
             ? node.primary_path_key
-            : [node.id],
-        is_ghost: false,
-        source_edge_id: null,
-    })))
+            : [node.id];
+        const goalId = nodePath.length > 0 ? String(nodePath[0]) : null;
+        const outcomeId = nodePath.length > 1 ? String(nodePath[1]) : null;
+        const outputId = nodePath.length > 2 ? String(nodePath[2]) : null;
+        const pathSortKey = `${nodePath.map(String).join("~")}|0|edge:none|node:${String(node.id)}`;
+        return {
+            node_id: node.id,
+            primary_path_key: nodePath,
+            path_key: nodePath,
+            path_sort_key: pathSortKey,
+            row_kind: "primary",
+            is_ghost: false,
+            source_edge_id: null,
+            projection_parent_id: node.primary_parent_id ?? null,
+            primary_parent_id: node.primary_parent_id ?? null,
+            goal_id: goalId,
+            outcome_id: outcomeId,
+            output_id: outputId,
+            depth: nodePath.length,
+        };
+    }))
         .map((row: Record<string, unknown>) => {
             const node = nodeById.get(String(row.node_id));
             const path = Array.isArray(row.path_key) ? row.path_key : [];
+            const rowKind = String(row.row_kind || (row.is_ghost ? "ghost_secondary" : "primary"));
             return {
                 node_id: row.node_id,
-                node_type: node?.node_type || null,
-                node_title: node?.title || null,
+                node_type: row.node_type || node?.node_type || null,
+                node_title: row.node_title || node?.title || null,
+                node_description: row.node_description || node?.description || null,
+                node_narrative: row.node_narrative || node?.narrative || null,
                 path_key: path,
                 path_display: path.map(String).join(">"),
-                is_ghost: Boolean(row.is_ghost),
+                primary_path_key: Array.isArray(row.primary_path_key) ? row.primary_path_key : [],
+                path_sort_key: String(row.path_sort_key || ""),
+                row_kind: rowKind,
+                is_ghost: rowKind === "ghost_secondary",
                 source_edge_id: row.source_edge_id || null,
+                projection_parent_id: row.projection_parent_id || null,
+                primary_parent_id: row.primary_parent_id || null,
+                goal_id: row.goal_id || null,
+                outcome_id: row.outcome_id || null,
+                output_id: row.output_id || null,
+                depth: Number(row.depth ?? path.length),
             };
         })
         .sort((a, b) => {
-            const byPath = String(a.path_display).localeCompare(String(b.path_display));
-            if (byPath !== 0) return byPath;
-            if (a.is_ghost !== b.is_ghost) return a.is_ghost ? 1 : -1;
-            return String(a.node_id).localeCompare(String(b.node_id));
+            const nullUuid = "00000000-0000-0000-0000-000000000000";
+            const bySortKey = String(a.path_sort_key).localeCompare(String(b.path_sort_key));
+            if (bySortKey !== 0) return bySortKey;
+            const byKind = String(a.row_kind).localeCompare(String(b.row_kind));
+            if (byKind !== 0) return byKind;
+            const byNode = String(a.node_id).localeCompare(String(b.node_id));
+            if (byNode !== 0) return byNode;
+            const byProjectionParent = String(a.projection_parent_id || nullUuid).localeCompare(String(b.projection_parent_id || nullUuid));
+            if (byProjectionParent !== 0) return byProjectionParent;
+            return String(a.source_edge_id || nullUuid).localeCompare(String(b.source_edge_id || nullUuid));
         });
 
     const counts: Record<DraftNodeType, number> = {
