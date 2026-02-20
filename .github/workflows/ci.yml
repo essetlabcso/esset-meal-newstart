@@ -28,6 +28,11 @@ jobs:
     - name: Build
       run: npm run build
 
+    - name: Security bundle secret scan (stop-ship)
+      env:
+        S0_REQUIRE_BUILD_OUTPUT: "1"
+      run: npm run sec:bundle-scan
+
   s0-db-proofs:
     runs-on: ubuntu-latest
 

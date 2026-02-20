@@ -44,6 +44,7 @@ docker exec -i $DB_CONTAINER psql -U postgres -d postgres -f supabase/tests/s0_s
 docker exec -i $DB_CONTAINER psql -U postgres -d postgres -f supabase/tests/s0_rls_cross_tenant_delete_zero_rows.sql
 npm run lint
 npm run build
+npm run sec:bundle-scan
 # Command to run unit tests
 node --test tests/unit/gateAValidator.test.mjs tests/unit/publishService.test.mjs
 npx playwright test tests/gate23_toc_publish.e2e.spec.ts --project=auth
@@ -51,6 +52,21 @@ npx playwright test tests/gate22_wks_prj_context.e2e.spec.ts --project=auth
 npx playwright test tests/s0_export_auth.e2e.spec.ts --project=auth
 node scripts/s0_spec_drift_check.mjs
 ```
+
+### Security Gate Quick-Run (stop-ship)
+```powershell
+docker exec -i $DB_CONTAINER psql -U postgres -d postgres -f supabase/tests/s0_sec_stop_ship.sql
+npm run build
+npm run sec:bundle-scan
+```
+
+Expected:
+- `s0_sec_stop_ship.sql` prints `{"result" : "PASS", "test" : "s0_sec_stop_ship"}`
+- `npm run sec:bundle-scan` prints `SEC_SCAN_PASS: ...`
+
+Fail signatures:
+- SQL: `SEC FAIL: cross-tenant ... leaked/succeeded`
+- Scan: `SEC_SCAN_FAIL: forbidden secret pattern detected`
 
 ## 3) Results Table (Step -> PASS/FAIL -> Evidence)
 | Step | PASS/FAIL | Evidence Snippet |
@@ -66,6 +82,7 @@ node scripts/s0_spec_drift_check.mjs
 | `docker exec -i $DB_CONTAINER psql -U postgres -d postgres -f supabase/tests/s0_rls_cross_tenant_delete_zero_rows.sql` |  |  |
 | `npm run lint` |  |  |
 | `npm run build` |  |  |
+| `npm run sec:bundle-scan` |  |  |
 | `node --test tests/unit/gateAValidator.test.mjs tests/unit/publishService.test.mjs` |  |  |
 | `npx playwright test tests/gate23_toc_publish.e2e.spec.ts --project=auth` |  |  |
 | `npx playwright test tests/gate22_wks_prj_context.e2e.spec.ts --project=auth` |  |  |
@@ -116,6 +133,7 @@ Evidence paths:
 - `supabase/tests/s0_sec_stop_ship.sql`
 - `supabase/tests/toc_rls_zero_rows.sql`
 - `tests/gate22_wks_prj_context.e2e.spec.ts`
+- `scripts/s0_secret_scan.mjs`
 - `scripts/s0_spec_drift_check.mjs`
 
 ## 5) Blockers and Risk Notes
