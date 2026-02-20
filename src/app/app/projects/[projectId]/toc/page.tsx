@@ -57,6 +57,15 @@ type TocEdgeView = {
     [key: string]: unknown;
 };
 
+type TocVersionView = {
+    id: string;
+    version_number: number;
+    status: string;
+    created_at: string;
+    analysis_snapshot_id: string | null;
+    linked_analysis_snapshot_id: string | null;
+};
+
 export default async function TocBuilderPage({ params, searchParams }: TocBuilderPageProps) {
     const { projectId } = await params;
     const {
@@ -69,6 +78,7 @@ export default async function TocBuilderPage({ params, searchParams }: TocBuilde
         export_error: exportError
     } = await searchParams;
     const supabase = await createClient();
+    const unsafeSupabase = supabase as unknown as { from: (table: string) => any };
     const tenant = await getActiveTenant(supabase);
 
     if (!tenant) return notFound();
@@ -84,12 +94,15 @@ export default async function TocBuilderPage({ params, searchParams }: TocBuilde
     if (!project) return notFound();
 
     // 2. Fetch all versions for the project
-    const { data: versions } = await supabase
+    const { data: versionsData } = await unsafeSupabase
         .from("toc_versions")
-        .select("id, version_number, status, created_at, analysis_snapshot_id")
+        .select("id, version_number, status, created_at, analysis_snapshot_id, linked_analysis_snapshot_id")
         .eq("project_id", projectId)
         .eq("tenant_id", tenant.tenantId)
         .order("created_at", { ascending: false });
+    const versions: TocVersionView[] = Array.isArray(versionsData)
+        ? (versionsData as TocVersionView[])
+        : [];
 
     // 3. Determine active version
     let activeVersion = null;
@@ -284,7 +297,22 @@ export default async function TocBuilderPage({ params, searchParams }: TocBuilde
                             {activeVersion.status === 'PUBLISHED' && (
                                 <form action={async () => {
                                     "use server"
-                                    const result = await exportMatrixCsv(projectId, activeVersion.id);
+                                    const linkedSnapshotId = activeVersion.linked_analysis_snapshot_id as string | null;
+                                    if (!linkedSnapshotId) {
+                                        const params = new URLSearchParams({
+                                            v: activeVersion.id,
+                                            export_error: "Export requires a linked analysis snapshot on the published version.",
+                                        });
+                                        redirect(`/app/projects/${projectId}/toc?${params.toString()}`);
+                                    }
+
+                                    const result = await exportMatrixCsv(
+                                        projectId,
+                                        activeVersion.id,
+                                        linkedSnapshotId,
+                                        "1970-01-01T00:00:00Z",
+                                        "2100-12-31T23:59:59Z"
+                                    );
                                     if (result?.error) {
                                         const params = new URLSearchParams({
                                             v: activeVersion.id,

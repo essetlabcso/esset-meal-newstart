@@ -719,12 +719,26 @@ export async function publishToc(projectId: string, versionId: string) {
     };
 }
 
-export async function exportMatrixCsv(projectId: string, versionId: string) {
+export async function exportMatrixCsv(
+    projectId: string,
+    versionId: string,
+    analysisSnapshotId: string,
+    windowStart: string,
+    windowEnd: string
+) {
     const supabase = await createClient();
     const tenant = await getActiveTenant(supabase);
 
     if (!tenant) return { error: "Unauthorized: No active tenant" };
     await verifyProjectContext(supabase, projectId, tenant.tenantId);
+
+    if (!analysisSnapshotId) {
+        return { error: "analysis_snapshot_id is required" };
+    }
+
+    if (!windowStart || !windowEnd) {
+        return { error: "window_start and window_end are required" };
+    }
 
     const { data, error } = await (supabase as unknown as {
         rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>
@@ -732,7 +746,9 @@ export async function exportMatrixCsv(projectId: string, versionId: string) {
         _tenant_id: tenant.tenantId,
         _project_id: projectId,
         _toc_version_id: versionId,
-        _time_window: { period: "current" },
+        _analysis_snapshot_id: analysisSnapshotId,
+        _window_start: windowStart,
+        _window_end: windowEnd,
         _config_json: { allocation_mode: "contribution" }
     });
 
@@ -742,7 +758,11 @@ export async function exportMatrixCsv(projectId: string, versionId: string) {
 
     const payload = data as {
         manifest_id: string;
+        csv_hash: string;
+        config_hash: string;
         hash: string;
+        row_count: number;
+        schema_version: string;
         csv_text: string;
     };
 
@@ -750,7 +770,11 @@ export async function exportMatrixCsv(projectId: string, versionId: string) {
     return {
         data: {
             manifestId: payload.manifest_id,
+            csvHash: payload.csv_hash,
+            configHash: payload.config_hash,
             hash: payload.hash,
+            rowCount: payload.row_count,
+            schemaVersion: payload.schema_version,
             csv: payload.csv_text,
         }
     };

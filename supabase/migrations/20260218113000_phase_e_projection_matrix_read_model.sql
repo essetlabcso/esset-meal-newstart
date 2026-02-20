@@ -182,12 +182,85 @@ order by
   coalesce(r.source_edge_id, '00000000-0000-0000-0000-000000000000'::uuid);
 $$;
 
+alter table public.report_manifests
+  add column if not exists csv_hash text;
+
+alter table public.report_manifests
+  add column if not exists config_hash text;
+
+alter table public.report_manifests
+  add column if not exists row_count integer;
+
+alter table public.report_manifests
+  add column if not exists schema_version text;
+
+alter table public.report_manifests
+  add column if not exists generated_at timestamptz;
+
+update public.report_manifests
+set csv_hash = coalesce(csv_hash, hash)
+where csv_hash is null;
+
+update public.report_manifests
+set config_hash = coalesce(config_hash, encode(extensions.digest(convert_to(config_json::text, 'UTF8'), 'sha256'), 'hex'))
+where config_hash is null;
+
+update public.report_manifests
+set row_count = coalesce(row_count, 0)
+where row_count is null;
+
+update public.report_manifests
+set schema_version = coalesce(schema_version, 'f1_matrix_csv_v1')
+where schema_version is null;
+
+update public.report_manifests
+set generated_at = coalesce(generated_at, created_at, now())
+where generated_at is null;
+
+alter table public.report_manifests
+  alter column csv_hash set not null;
+
+alter table public.report_manifests
+  alter column config_hash set not null;
+
+alter table public.report_manifests
+  alter column row_count set not null;
+
+alter table public.report_manifests
+  alter column schema_version set not null;
+
+alter table public.report_manifests
+  alter column generated_at set not null;
+
+alter table public.report_manifests
+  alter column row_count set default 0;
+
+alter table public.report_manifests
+  alter column schema_version set default 'f1_matrix_csv_v1';
+
+alter table public.report_manifests
+  alter column generated_at set default now();
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'report_manifests_row_count_nonnegative'
+      and conrelid = 'public.report_manifests'::regclass
+  ) then
+    alter table public.report_manifests
+      add constraint report_manifests_row_count_nonnegative check (row_count >= 0);
+  end if;
+end $$;
+
 create or replace function public.export_matrix_csv(
   _tenant_id uuid,
   _project_id uuid,
   _toc_version_id uuid,
-  _time_window jsonb default '{}'::jsonb,
-  _config_json jsonb default '{}'::jsonb
+  _analysis_snapshot_id uuid,
+  _window_start timestamptz,
+  _window_end timestamptz,
+  _config_json jsonb
 )
 returns jsonb
 language plpgsql
@@ -197,14 +270,31 @@ as $$
 declare
   _published public.toc_versions%rowtype;
   _snapshot_id uuid;
+  _time_window jsonb;
   _manifest_id uuid;
   _csv_header text;
   _csv_rows text;
   _csv_text text;
+  _csv_hash text;
+  _config_hash text;
   _hash text;
+  _row_count integer;
+  _schema_version text := 'f1_matrix_csv_v1';
 begin
   if not public.is_tenant_member(_tenant_id) then
     raise exception 'Unauthorized: tenant membership required';
+  end if;
+
+  if _analysis_snapshot_id is null then
+    raise exception 'analysis_snapshot_id is required';
+  end if;
+
+  if _window_start is null or _window_end is null then
+    raise exception 'window_start and window_end are required';
+  end if;
+
+  if _window_end < _window_start then
+    raise exception 'window_end must be greater than or equal to window_start';
   end if;
 
   if coalesce(_config_json ->> 'allocation_mode', '') = 'weighted' then
@@ -227,6 +317,15 @@ begin
   if _snapshot_id is null then
     raise exception 'RPT-02 violation: published version is missing linked_analysis_snapshot_id';
   end if;
+
+  if _analysis_snapshot_id <> _snapshot_id then
+    raise exception 'Snapshot mismatch: supplied analysis_snapshot_id does not match published linked snapshot';
+  end if;
+
+  _time_window := jsonb_build_object(
+    'window_start', to_char(_window_start at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
+    'window_end', to_char(_window_end at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
+  );
 
   _csv_header := 'path_key,node_id,node_type,node_title,primary_parent_id,is_ghost,source_edge_id,linked_analysis_snapshot_id,reconciliation_footnote';
 
@@ -254,16 +353,29 @@ begin
   into _csv_rows
   from public.read_toc_projection_matrix(_tenant_id, _project_id, _toc_version_id) p;
 
+  select count(*)
+  into _row_count
+  from public.read_toc_projection_matrix(_tenant_id, _project_id, _toc_version_id) p;
+
   _csv_text := _csv_header || E'\n' || _csv_rows;
-  _hash := encode(digest(_csv_text, 'sha256'), 'hex');
+  _csv_hash := encode(extensions.digest(convert_to(_csv_text, 'UTF8'), 'sha256'), 'hex');
+  _config_hash := encode(extensions.digest(convert_to(_config_json::text, 'UTF8'), 'sha256'), 'hex');
+  _hash := encode(extensions.digest(
+    convert_to(
+      _csv_hash || '|' || _config_hash || '|' || _toc_version_id::text || '|' || _snapshot_id::text || '|'
+      || (_time_window ->> 'window_start') || '|' || (_time_window ->> 'window_end') || '|' || _schema_version,
+      'UTF8'
+    ),
+    'sha256'
+  ), 'hex');
 
   insert into public.report_manifests (
     tenant_id, project_id, toc_version_id, analysis_snapshot_id,
-    time_window, export_type, config_json, hash, artifact_csv, created_by
+    time_window, export_type, config_json, csv_hash, config_hash, hash, row_count, schema_version, generated_at, artifact_csv, created_by
   )
   values (
     _tenant_id, _project_id, _toc_version_id, _snapshot_id,
-    _time_window, 'matrix_csv', _config_json, _hash, _csv_text, auth.uid()
+    _time_window, 'matrix_csv', _config_json, _csv_hash, _config_hash, _hash, _row_count, _schema_version, now(), _csv_text, auth.uid()
   )
   returning id into _manifest_id;
 
@@ -272,7 +384,12 @@ begin
     'toc_version_id', _toc_version_id,
     'analysis_snapshot_id', _snapshot_id,
     'export_type', 'matrix_csv',
+    'csv_hash', _csv_hash,
+    'config_hash', _config_hash,
     'hash', _hash,
+    'row_count', _row_count,
+    'schema_version', _schema_version,
+    'time_window', _time_window,
     'csv_text', _csv_text,
     'rule_ids', jsonb_build_array('RPT-01', 'RPT-02', 'AN-01', 'AN-02', 'AN-03', 'TOC-PROJ-01', 'TOC-PROJ-02', 'TOC-PROJ-03', 'TOC-PROJ-04')
   );
