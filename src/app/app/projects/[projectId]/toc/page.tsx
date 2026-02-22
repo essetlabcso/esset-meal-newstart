@@ -21,6 +21,7 @@ interface TocBuilderPageProps {
     searchParams: Promise<{
         snapshot?: string;
         v?: string;
+        notice?: string;
         error?: string;
         gate_codes?: string;
         export_hash?: string;
@@ -71,6 +72,7 @@ export default async function TocBuilderPage({ params, searchParams }: TocBuilde
     const {
         snapshot: snapshotIdParam,
         v: selectedVersionId,
+        notice,
         error: publishError,
         gate_codes: gateCodesParam,
         export_hash: exportHash,
@@ -78,7 +80,6 @@ export default async function TocBuilderPage({ params, searchParams }: TocBuilde
         export_error: exportError
     } = await searchParams;
     const supabase = await createClient();
-    const unsafeSupabase = supabase as unknown as { from: (table: string) => any };
     const tenant = await getActiveTenant(supabase);
 
     if (!tenant) return notFound();
@@ -93,13 +94,23 @@ export default async function TocBuilderPage({ params, searchParams }: TocBuilde
 
     if (!project) return notFound();
 
+    const draftNoticeMessage =
+        notice === "draft_created"
+            ? "Draft created. You can continue building your ToC."
+            : notice === "draft_exists"
+                ? "A draft already exists. Continuing with your current draft."
+                : notice === "draft_exists_snapshot_ignored"
+                    ? "A draft already exists. Continuing with your current draft. Selected snapshot was ignored."
+                    : null;
+
     // 2. Fetch all versions for the project
-    const { data: versionsData } = await unsafeSupabase
+    const versionsResult = await supabase
         .from("toc_versions")
         .select("id, version_number, status, created_at, analysis_snapshot_id, linked_analysis_snapshot_id")
         .eq("project_id", projectId)
         .eq("tenant_id", tenant.tenantId)
         .order("created_at", { ascending: false });
+    const versionsData = (versionsResult as unknown as { data: TocVersionView[] | null }).data;
     const versions: TocVersionView[] = Array.isArray(versionsData)
         ? (versionsData as TocVersionView[])
         : [];
@@ -134,6 +145,12 @@ export default async function TocBuilderPage({ params, searchParams }: TocBuilde
                     <p className="text-gray-400 text-sm mt-1">Initialize your strategy graph from an analysis snapshot.</p>
                 </div>
 
+                {draftNoticeMessage && (
+                    <div className="mb-6 rounded-lg border border-blue-500/30 bg-blue-500/10 px-4 py-3 text-sm text-blue-100">
+                        {draftNoticeMessage}
+                    </div>
+                )}
+
                 <div className="bg-white/5 border border-white/5 rounded-xl p-8 text-center">
                     <div className="mb-6 inline-flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-500">
                         <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -146,7 +163,9 @@ export default async function TocBuilderPage({ params, searchParams }: TocBuilde
                     <form action={async (formData: FormData) => {
                         "use server"
                         const sid = formData.get("snapshot_id") as string;
-                        await createTocDraft(projectId, sid);
+                        const result = await createTocDraft(projectId, sid);
+                        const params = new URLSearchParams({ notice: result.notice });
+                        redirect(`/app/projects/${projectId}/toc?${params.toString()}`);
                     }} className="space-y-4 text-left max-w-sm mx-auto">
                         <div>
                             <label className="block text-sm font-medium text-gray-300 mb-1">Select Analysis Snapshot</label>
@@ -160,7 +179,11 @@ export default async function TocBuilderPage({ params, searchParams }: TocBuilde
                                 {snapshots?.map(s => <option key={s.id} value={s.id}>{s.title}</option>)}
                             </select>
                             {(!snapshots || snapshots.length === 0) && (
-                                <p className="text-xs text-amber-400 mt-2">No snapshots found. <Link href={`/app/projects/${projectId}/analysis`} className="underline">Create one first.</Link></p>
+                                <p className="text-xs text-amber-400 mt-2">
+                                    Create an Analysis Snapshot to initialize your ToC.
+                                    {" "}
+                                    <Link href={`/app/projects/${projectId}/analysis/new`} className="underline">Create one now.</Link>
+                                </p>
                             )}
                         </div>
 
@@ -250,15 +273,12 @@ export default async function TocBuilderPage({ params, searchParams }: TocBuilde
 
                 <div className="flex flex-wrap items-center gap-3">
                     {/* Version Selector */}
-                    <div className="flex items-center space-x-2 bg-white/5 border border-white/10 rounded-lg p-1">
+                    <form action={`/app/projects/${projectId}/toc`} method="get" className="flex items-center space-x-2 bg-white/5 border border-white/10 rounded-lg p-1">
                         <span className="text-[10px] font-bold text-gray-500 px-2 uppercase">Version:</span>
                         <select
-                            className="bg-transparent text-xs text-white outline-none pr-4"
+                            name="v"
+                            className="bg-transparent text-xs text-white outline-none pr-1"
                             defaultValue={activeVersion.id}
-                            onChange={(e) => {
-                                // Simple client routing for selector
-                                window.location.href = `/app/projects/${projectId}/toc?v=${e.target.value}`;
-                            }}
                         >
                             {versions?.map(v => (
                                 <option key={v.id} value={v.id} className="bg-gray-900">
@@ -266,7 +286,10 @@ export default async function TocBuilderPage({ params, searchParams }: TocBuilde
                                 </option>
                             ))}
                         </select>
-                    </div>
+                        <button className="rounded bg-white/10 px-2 py-1 text-[10px] font-semibold text-white hover:bg-white/20 transition">
+                            Open
+                        </button>
+                    </form>
 
                     {/* Admin Actions */}
                     {tenant.role !== 'member' && (
@@ -343,7 +366,9 @@ export default async function TocBuilderPage({ params, searchParams }: TocBuilde
                                 "use server"
                                 const sid = formData.get("snapshot_id") as string;
                                 if (!sid) throw new Error("Please select an analysis snapshot.");
-                                await createTocDraft(projectId, sid, latestPublished?.id);
+                                const result = await createTocDraft(projectId, sid, latestPublished?.id);
+                                const params = new URLSearchParams({ notice: result.notice });
+                                redirect(`/app/projects/${projectId}/toc?${params.toString()}`);
                             }} className="flex items-center gap-2">
                                 <select
                                     name="snapshot_id"
@@ -384,6 +409,12 @@ export default async function TocBuilderPage({ params, searchParams }: TocBuilde
                             Gate codes: {gateCodesParam}
                         </div>
                     )}
+                </div>
+            )}
+
+            {draftNoticeMessage && (
+                <div className="mb-6 rounded-lg border border-blue-500/30 bg-blue-500/10 px-4 py-3 text-sm text-blue-100">
+                    {draftNoticeMessage}
                 </div>
             )}
 

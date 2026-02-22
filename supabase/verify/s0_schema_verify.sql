@@ -54,6 +54,32 @@ with checks as (
              and p.proname = 'export_matrix_csv'
              and p.prorettype = 'jsonb'::regtype
          )
+  union all
+  select 'read_toc_projection_matrix.exists',
+         exists (
+           select 1 from pg_proc p
+           join pg_namespace n on n.oid = p.pronamespace
+           where n.nspname = 'public'
+             and p.proname = 'read_toc_projection_matrix'
+         )
+  union all
+  select 'read_toc_projection_matrix.security_invoker',
+         exists (
+           select 1 from pg_proc p
+           join pg_namespace n on n.oid = p.pronamespace
+           where n.nspname = 'public'
+             and p.proname = 'read_toc_projection_matrix'
+             and p.prosecdef = false
+         )
+  union all
+  select 'export_matrix_csv.security_invoker',
+         exists (
+           select 1 from pg_proc p
+           join pg_namespace n on n.oid = p.pronamespace
+           where n.nspname = 'public'
+             and p.proname = 'export_matrix_csv'
+             and p.prosecdef = false
+         )
 )
 select json_build_object(
   'result', case when bool_and(pass) then 'PASS' else 'FAIL' end,

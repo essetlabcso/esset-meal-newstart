@@ -10,6 +10,7 @@ type DraftNodeType = "GOAL" | "OUTCOME" | "OUTPUT" | "ACTIVITY";
 type DraftEdgeKind = "causal" | "secondary_link" | "feedback";
 type DraftEdgeConfidence = "high" | "medium" | "low";
 type DraftEdgeRiskFlag = "none" | "high_risk";
+export type DraftCreationNotice = "draft_created" | "draft_exists" | "draft_exists_snapshot_ignored";
 
 type CrudErrorCode = "NOT_FOUND" | "FORBIDDEN" | "VALIDATION" | "CONFLICT";
 
@@ -25,6 +26,7 @@ interface ScopedProject {
 interface DraftVersionRecord {
     id: string;
     status: string;
+    analysis_snapshot_id?: string | null;
 }
 
 interface UnsafeSupabase {
@@ -166,12 +168,36 @@ export async function createDraftVersionAction(
     projectId: string,
     snapshotId: string,
     fromVersionId?: string
-): Promise<CrudResult<{ versionId: string }>> {
+): Promise<CrudResult<{ versionId: string; notice: DraftCreationNotice }>> {
     const supabase = await createClient();
     const scope = await resolveProjectScope(supabase, projectId);
     if (!scope.ok) return scope;
 
     const unsafe = toUnsafeClient(supabase);
+
+    const { data: existingDraftRows, error: existingDraftError } = await unsafe
+        .from("toc_versions")
+        .select("id,status,analysis_snapshot_id")
+        .eq("project_id", projectId)
+        .eq("tenant_id", scope.data.tenantId)
+        .eq("status", "DRAFT")
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+    const existingDraft = Array.isArray(existingDraftRows)
+        ? (existingDraftRows[0] as DraftVersionRecord | undefined) || null
+        : null;
+
+    if (!existingDraftError && existingDraft) {
+        const notice: DraftCreationNotice = snapshotId
+            ? "draft_exists_snapshot_ignored"
+            : "draft_exists";
+        return ok({ versionId: String(existingDraft.id), notice });
+    }
+
+    if (!snapshotId) {
+        return fail("VALIDATION", "Analysis snapshot is required");
+    }
 
     const { data: snapshot, error: snapshotError } = await unsafe
         .from("analysis_snapshots")
@@ -195,6 +221,26 @@ export async function createDraftVersionAction(
     if (error) {
         const msg = error.message.toLowerCase();
         if (msg.includes("draft already exists") || msg.includes("one_draft")) {
+            const { data: conflictDraftRows } = await unsafe
+                .from("toc_versions")
+                .select("id,status,analysis_snapshot_id")
+                .eq("project_id", projectId)
+                .eq("tenant_id", scope.data.tenantId)
+                .eq("status", "DRAFT")
+                .order("created_at", { ascending: false })
+                .limit(1);
+
+            const conflictDraft = Array.isArray(conflictDraftRows)
+                ? (conflictDraftRows[0] as DraftVersionRecord | undefined) || null
+                : null;
+
+            if (conflictDraft) {
+                const notice: DraftCreationNotice = snapshotId
+                    ? "draft_exists_snapshot_ignored"
+                    : "draft_exists";
+                return ok({ versionId: String(conflictDraft.id), notice });
+            }
+
             return fail("CONFLICT", "A draft already exists for this project");
         }
         if (msg.includes("not found")) {
@@ -204,7 +250,7 @@ export async function createDraftVersionAction(
     }
 
     revalidatePath(`/app/projects/${projectId}/toc`);
-    return ok({ versionId: String(data) });
+    return ok({ versionId: String(data), notice: "draft_created" });
 }
 
 export interface UpsertDraftNodeInput {
@@ -650,7 +696,7 @@ export async function createTocDraft(
     if (!result.ok) {
         throw new Error(result.message);
     }
-    return result.data.versionId;
+    return result.data;
 }
 
 export async function publishToc(projectId: string, versionId: string) {

@@ -46,7 +46,7 @@ npm run lint
 npm run build
 npm run sec:bundle-scan
 # Command to run unit tests
-node --test tests/unit/gateAValidator.test.mjs tests/unit/publishService.test.mjs
+node --test tests/unit/gateAValidator.test.mjs tests/unit/publishService.test.mjs tests/unit/projectionContract.test.mjs
 npx playwright test tests/gate23_toc_publish.e2e.spec.ts --project=auth
 npx playwright test tests/gate22_wks_prj_context.e2e.spec.ts --project=auth
 npx playwright test tests/s0_export_auth.e2e.spec.ts --project=auth
@@ -83,7 +83,7 @@ Fail signatures:
 | `npm run lint` |  |  |
 | `npm run build` |  |  |
 | `npm run sec:bundle-scan` |  |  |
-| `node --test tests/unit/gateAValidator.test.mjs tests/unit/publishService.test.mjs` |  |  |
+| `node --test tests/unit/gateAValidator.test.mjs tests/unit/publishService.test.mjs tests/unit/projectionContract.test.mjs` |  |  |
 | `npx playwright test tests/gate23_toc_publish.e2e.spec.ts --project=auth` |  |  |
 | `npx playwright test tests/gate22_wks_prj_context.e2e.spec.ts --project=auth` |  |  |
 | `npx playwright test tests/s0_export_auth.e2e.spec.ts --project=auth` |  |  |
@@ -110,7 +110,9 @@ Evidence paths:
 
 Evidence paths:
 - `supabase/migrations/20260218020000_s0_canonical_slice.sql`
+- `supabase/migrations/20260218113000_phase_e_projection_matrix_read_model.sql`
 - `supabase/tests/s0_toc_projection_contract.sql`
+- `tests/unit/projectionContract.test.mjs`
 
 ### Snapshot-Bound Export
 - [ ] `RPT-01` manifest persistence proven.

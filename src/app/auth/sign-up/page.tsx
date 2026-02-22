@@ -1,113 +1,165 @@
 "use client";
 
-import { useActionState } from "react";
-import Link from "next/link";
 import Image from "next/image";
-import { signUpWithPassword } from "../actions";
+import Link from "next/link";
+import { FormEvent, useActionState, useRef, useState } from "react";
+import Spinner from "@/components/ui/Spinner";
+import { signUpWithPassword } from "@/app/auth/actions";
+
+type AuthState = {
+    error?: string;
+};
+
+const initialState: AuthState = {};
 
 export default function SignUpPage() {
     const [state, formAction, pending] = useActionState(
-        async (_prev: { error: string } | null, formData: FormData) => {
-            const result = await signUpWithPassword(formData);
-            return result ?? null;
-        },
-        null,
+        async (_prev: AuthState, formData: FormData) => signUpWithPassword(formData),
+        initialState,
     );
+    const [showPassword, setShowPassword] = useState(false);
+    const [validationError, setValidationError] = useState<string | null>(null);
+    const emailRef = useRef<HTMLInputElement>(null);
+    const passwordRef = useRef<HTMLInputElement>(null);
+
+    function handleSubmit(event: FormEvent<HTMLFormElement>) {
+        const form = event.currentTarget;
+        const email = (new FormData(form).get("email") as string | null)?.trim() ?? "";
+        const password = (new FormData(form).get("password") as string | null) ?? "";
+
+        if (!email) {
+            event.preventDefault();
+            setValidationError("Enter your email.");
+            emailRef.current?.focus();
+            return;
+        }
+
+        if (!password) {
+            event.preventDefault();
+            setValidationError("Create a password.");
+            passwordRef.current?.focus();
+            return;
+        }
+
+        if (password.length < 6) {
+            event.preventDefault();
+            setValidationError("Use at least 6 characters for your password.");
+            passwordRef.current?.focus();
+            return;
+        }
+
+        setValidationError(null);
+    }
 
     return (
-        <main className="flex min-h-screen flex-col items-center justify-center p-6 bg-gray-950 text-white selection:bg-emerald-500/30">
-            <div className="w-full max-w-md space-y-8">
-                {/* Brand Logo */}
-                <div className="flex flex-col items-center gap-4 text-center">
-                    <Link href="/" className="hover:opacity-80 transition-opacity" data-testid="auth-logo">
+        <main className="esset-page-bg flex min-h-screen items-center justify-center px-4 py-10">
+            <div className="w-full space-y-6" style={{ maxWidth: "var(--esset-form-max)" }}>
+                <section className="esset-shell-bg flex flex-col items-center gap-3 rounded-[28px] px-6 py-10 text-center text-white sm:px-10 sm:py-12">
+                    <Link href="/" className="inline-flex items-center transition hover:opacity-90">
                         <Image
-                            src="/brand/esset-logo-header.svg"
-                            alt="ESSET MEAL Logo"
+                            src="/brand/esset-meal-logo.svg"
+                            alt="ESSET MEAL"
                             width={180}
-                            height={40}
+                            height={48}
                             priority
-                            className="h-10 w-auto"
+                            data-testid="auth-logo"
+                            className="h-12 w-auto"
                         />
                     </Link>
-                    <h1 className="text-2xl font-semibold tracking-tight text-gray-100" data-testid="auth-signup-title">
-                        Create your account
-                    </h1>
-                    <p className="text-sm text-gray-400">
-                        Join the platform verified by impact data
-                    </p>
-                </div>
+                    <div className="space-y-2">
+                        <h1 data-testid="auth-signup-title" className="text-3xl font-extrabold tracking-tight sm:text-4xl">
+                            Create your account
+                        </h1>
+                        <p className="text-sm font-medium text-white/80">
+                            Set up your account and continue to workspace setup.
+                        </p>
+                    </div>
+                </section>
 
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-8 shadow-2xl backdrop-blur-sm">
-                    <form action={formAction} className="flex flex-col gap-5">
+                <section className="esset-card p-6 sm:p-7">
+                    <form action={formAction} onSubmit={handleSubmit} className="space-y-4">
                         <div className="space-y-2">
-                            <label htmlFor="email" className="text-sm font-medium text-gray-300 ml-1">
+                            <label htmlFor="email" className="text-sm font-semibold text-esset-ink">
                                 Email
                             </label>
                             <input
+                                ref={emailRef}
                                 id="email"
                                 name="email"
                                 type="email"
-                                required
-                                className="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-2.5 text-white placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all outline-none"
-                                placeholder="you@example.com"
                                 autoComplete="email"
+                                className="esset-input"
+                                placeholder="you@example.com"
                             />
                         </div>
 
                         <div className="space-y-2">
-                            <label htmlFor="password" className="text-sm font-medium text-gray-300 ml-1">
+                            <label
+                                htmlFor="password"
+                                className="text-sm font-semibold text-esset-ink"
+                            >
                                 Password
                             </label>
-                            <input
-                                id="password"
-                                name="password"
-                                type="password"
-                                required
-                                minLength={6}
-                                className="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-2.5 text-white placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all outline-none"
-                                placeholder="••••••••"
-                                autoComplete="new-password"
-                            />
+                            <div className="relative">
+                                <input
+                                    ref={passwordRef}
+                                    id="password"
+                                    name="password"
+                                    type={showPassword ? "text" : "password"}
+                                    autoComplete="new-password"
+                                    minLength={6}
+                                    className="esset-input pr-20"
+                                    placeholder="Create a password"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword((value) => !value)}
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md px-2 py-1 text-xs font-semibold text-esset-teal-800 hover:bg-esset-bg"
+                                >
+                                    {showPassword ? "Hide" : "Show"}
+                                </button>
+                            </div>
+                            <p className="text-xs text-esset-muted">
+                                Use at least 6 characters.
+                            </p>
                         </div>
 
-                        {state?.error && (
-                            <div className="rounded-lg bg-red-500/10 border border-red-500/20 p-3">
-                                <p className="text-red-400 text-xs text-center font-medium">{state.error}</p>
+                        {validationError ? (
+                            <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">
+                                {validationError}
                             </div>
-                        )}
+                        ) : null}
+
+                        {state.error ? (
+                            <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">
+                                {state.error}
+                            </div>
+                        ) : null}
 
                         <button
                             type="submit"
                             disabled={pending}
                             data-testid="auth-signup-submit"
-                            className="w-full rounded-xl bg-emerald-600 px-4 py-2.5 font-semibold text-white hover:bg-emerald-500 active:bg-emerald-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-emerald-900/20"
+                            className="esset-btn-primary inline-flex w-full items-center justify-center gap-2 px-4 py-2.5"
                         >
-                            {pending ? "Creating account…" : "Sign up"}
+                            {pending ? (
+                                <>
+                                    <Spinner label="Creating account" />
+                                    Creating account...
+                                </>
+                            ) : (
+                                "Sign up"
+                            )}
                         </button>
                     </form>
 
-                    <div className="mt-8 pt-6 border-t border-white/5 flex flex-col items-center gap-4">
-                        <p className="text-sm text-gray-400">
-                            Already have an account?{" "}
-                            <Link href="/auth/sign-in" className="text-emerald-400 font-medium hover:text-emerald-300 transition-colors">
-                                Sign in
-                            </Link>
-                        </p>
-                    </div>
-                </div>
-
-                <div className="flex flex-col items-center gap-6">
-                    <Link
-                        href="/"
-                        className="text-xs text-gray-500 hover:text-gray-300 transition-colors inline-flex items-center gap-1"
-                    >
-                        ← Back to home
-                    </Link>
-
-                    <footer className="text-[10px] uppercase tracking-widest text-gray-600 font-bold">
-                        Built for impact, verified by data.
-                    </footer>
-                </div>
+                    <p className="mt-5 text-center text-sm text-esset-muted">
+                        Already have an account?{" "}
+                        <Link href="/auth/sign-in" className="font-semibold text-esset-teal-800">
+                            Sign in
+                        </Link>
+                    </p>
+                </section>
             </div>
         </main>
     );

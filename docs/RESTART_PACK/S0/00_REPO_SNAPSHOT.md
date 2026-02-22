@@ -42,6 +42,7 @@ supabase/
     20260215184200_gate5_1a_fix_rls_qual.sql
     20260217093000_gate23_toc_gate_a_publish_cow.sql
     20260218020000_s0_canonical_slice.sql
+    20260218113000_phase_e_projection_matrix_read_model.sql
   tests/
     toc_gate_a_publish.sql
     toc_rls_zero_rows.sql
@@ -56,11 +57,13 @@ src/
   app/app/projects/[projectId]/toc/actions.ts
   app/app/projects/[projectId]/toc/page.tsx
   app/app/projects/[projectId]/toc/TocGraphClient.tsx
+  lib/toc/projectionContract.mjs
 
 tests/
   gate23_toc_publish.e2e.spec.ts
   gate22_wks_prj_context.e2e.spec.ts
   s0_export_auth.e2e.spec.ts
+  unit/projectionContract.test.mjs
 
 scripts/
   s0_spec_drift_check.mjs
@@ -78,8 +81,9 @@ scripts/
   - `supabase/migrations/20260218020000_s0_canonical_slice.sql`
 - Option C projection contract implementation artifacts are present:
   - `toc_nodes.primary_parent_id`, `toc_nodes.primary_path_key`
-  - `toc_projections` + projection rebuild function
+  - `toc_projections` + deterministic read-model function `read_toc_projection_matrix`
   - `supabase/migrations/20260218020000_s0_canonical_slice.sql`
+  - `supabase/migrations/20260218113000_phase_e_projection_matrix_read_model.sql`
 - Snapshot-bound export + manifest + deterministic hash artifacts are present:
   - `report_manifests` table and `export_matrix_csv` RPC
   - `supabase/migrations/20260218020000_s0_canonical_slice.sql`

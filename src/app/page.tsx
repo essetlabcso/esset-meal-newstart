@@ -1,267 +1,555 @@
-import Link from "next/link";
 import Image from "next/image";
-import type { Metadata } from "next";
+import Link from "next/link";
 
-export const metadata: Metadata = {
-  title: "MEAL that works for the field — ESSET MEAL",
-  description: "Stop fighting with disconnected spreadsheets. ESSET MEAL connects your Theory of Change to real field data, giving CSOs the clarity to make decisions.",
-  openGraph: {
-    title: "MEAL that works for the field — ESSET MEAL",
-    description: "Connect your Theory of Change to real field data for decision clarity.",
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "MEAL that works for the field — ESSET MEAL",
-    description: "Built for CSOs to manage complex programs with data that matters.",
-  },
+import { LandingNav } from "@/components/landing/LandingNav";
+import RealityCheckTool from "@/components/landing/RealityCheckTool";
+import FaqAccordion from "@/components/landing/FaqAccordion";
+import {
+    BEFORE_ESSET,
+    WITH_ESSET,
+    WHAT_WHY_HOW,
+    HOW_IT_WORKS_STEPS,
+    ACCESS_CONTROL_ROWS,
+    MANIFESTO_LINES,
+    TAILORED_SOLUTIONS,
+    FAQ_ITEMS,
+} from "@/components/landing/content";
+
+export const metadata = {
+    title: "ESSET MEAL — MEAL that works in the field, not just in the template",
+    description:
+        "Connect your Theory of Change to real field data. Built for CSO MEAL leads who need clarity to make decisions, not just spreadsheet reports.",
 };
 
-export default function Home() {
-  return (
-    <div className="flex flex-col min-h-screen bg-neutral-950 text-neutral-100 selection:bg-emerald-500/30">
-      <a
-        href="#main-content"
-        className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[100] focus:px-4 focus:py-2 focus:bg-emerald-600 focus:text-white focus:rounded-full focus:font-bold focus:shadow-2xl transition-all"
-      >
-        Skip to content
-      </a>
-      {/* Header/Nav */}
-      <header className="sticky top-0 z-50 w-full border-b border-white/5 bg-neutral-950/80 backdrop-blur-md">
-        <div className="container mx-auto flex h-16 items-center justify-between px-4 sm:px-6">
-          <div className="flex items-center gap-2">
-            <Image
-              src="/brand/esset-logo-header.svg"
-              alt="ESSET MEAL Logo"
-              width={140}
-              height={32}
-              className="h-8 w-auto"
-              priority
-            />
-          </div>
-          <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
-            <Link href="#features" className="text-neutral-400 hover:text-white transition">Features</Link>
-            <Link href="#how-it-works" className="text-neutral-400 hover:text-white transition">Process</Link>
-            <Link href="/demo" className="text-neutral-400 hover:text-white transition">Demo Flow</Link>
-          </nav>
-          <div className="flex items-center gap-4">
-            <Link href="/auth/sign-in" className="text-sm font-medium text-neutral-400 hover:text-white transition">
-              Sign in
-            </Link>
-            <Link
-              href="/auth/sign-up"
-              className="inline-flex h-9 items-center justify-center rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-500 transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-            >
-              Start a workspace
-            </Link>
-          </div>
-        </div>
-      </header>
+export default function LandingPage() {
+    return (
+        <div className="landing-page">
+            {/* Skip link – first focusable element */}
+            <a href="#main-content" className="skip-link">
+                Skip to main content
+            </a>
 
-      <main id="main-content" className="flex-1 outline-none" tabIndex={-1}>
-        {/* Hero Section */}
-        <section className="relative py-20 lg:py-32 overflow-hidden">
-          <div className="container mx-auto px-4 sm:px-6 relative z-10">
-            <div className="max-w-3xl">
-              <h1 data-testid="hero-headline" className="text-4xl font-bold tracking-tight sm:text-6xl mb-6">
-                MEAL that works for the field, <span className="text-emerald-500 font-extrabold italic">not just the donor.</span>
-              </h1>
-              <p className="text-lg sm:text-xl text-neutral-400 leading-relaxed mb-10 max-w-2xl">
-                Stop fighting with disconnected spreadsheets. ESSET MEAL connects your Theory of Change to real field data, giving CSOs the clarity to make decisions, not just reports.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-4">
-                <Link
-                  data-testid="hero-cta-primary"
-                  href="/auth/sign-up"
-                  className="inline-flex h-12 items-center justify-center rounded-full bg-emerald-600 px-8 text-base font-bold text-white shadow-lg hover:bg-emerald-500 transition-all hover:scale-[1.02] active:scale-[0.98]"
+            <LandingNav />
+
+            <main id="main-content">
+                {/* ══════ 1. HERO ══════ */}
+                <section
+                    id="about"
+                    className="landing-hero landing-section px-4 pb-16 pt-28 sm:px-6 sm:pb-20 sm:pt-32"
                 >
-                  Start a workspace
-                </Link>
-                <Link
-                  data-testid="hero-cta-secondary"
-                  href="/demo"
-                  className="inline-flex h-12 items-center justify-center rounded-full border border-white/10 bg-white/5 px-8 text-base font-bold text-white hover:bg-white/10 transition-all"
-                >
-                  See how it works
-                </Link>
-              </div>
-            </div>
-          </div>
-          {/* Subtle decoration */}
-          <div className="absolute top-1/2 right-0 -translate-y-1/2 w-1/3 h-1/2 bg-emerald-500/10 blur-[120px] rounded-full -z-10" />
-        </section>
+                    <div
+                        className="mx-auto w-full text-center"
+                        style={{ maxWidth: "var(--esset-container-max)" }}
+                    >
+                        <p className="landing-badge mb-5 bg-white/15 text-white/90">
+                            Strategy · Evidence · Adaptation
+                        </p>
 
-        {/* Reality Check / Pain Points */}
-        <section className="py-20 bg-neutral-900/50">
-          <div className="container mx-auto px-4 sm:px-6">
-            <h2 className="text-2xl font-bold mb-12 text-neutral-300 uppercase tracking-widest text-center sm:text-left">The MEAL Reality Change</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-              {[
-                { title: "Spreadsheet Chaos", desc: '"We have 15 versions of the same ToC, and I\'m not sure which one reflects reality."' },
-                { title: "Compliance Fatigue", desc: '"We spend 80% of our time on donor reports and 0% using data to improve our programs."' },
-                { title: "Field-Office Disconnect", desc: '"I can\'t see what’s happening on the ground until 30 days after the month ends."' },
-                { title: "Hidden Assumptions", desc: '"Our projects fail because we didn\'t track the risks that needed to stay true."' }
-              ].map((point, i) => (
-                <div key={i} className="group p-6 rounded-2xl bg-neutral-950 border border-white/5 hover:border-emerald-500/50 transition-colors">
-                  <div className="h-1 w-12 bg-emerald-500/20 mb-6 group-hover:w-full transition-all duration-500" />
-                  <h3 className="text-xl font-bold mb-3">{point.title}</h3>
-                  <p className="text-neutral-400 text-sm italic leading-relaxed">{point.desc}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
+                        <h1
+                            data-testid="hero-headline"
+                            className="landing-hero-headline mx-auto max-w-3xl text-white"
+                        >
+                            MEAL that works in the field — not just in the
+                            template
+                        </h1>
 
-        {/* Capabilities */}
-        <section id="features" className="py-20 lg:py-32">
-          <div className="container mx-auto px-4 sm:px-6">
-            <div className="flex flex-col lg:flex-row gap-16 items-center">
-              <div className="flex-1 max-w-xl">
-                <h2 className="text-3xl font-bold mb-6">Built for product reality</h2>
-                <div className="space-y-6">
-                  {[
-                    { label: "Unified Workspaces", text: "One home for your entire organization’s MEAL data." },
-                    { label: "Visual Theory of Change", text: "Build project logic with a drag-and-drop builder." },
-                    { label: "Assumption Tracking", text: "Link specific risks to every node and edge in your logic." },
-                    { label: "Analysis Snapshots", text: "Document your 'Reality Checks' before you map your logic." },
-                    { label: "Versioning + Publish Lock", text: "Published logic is immutable; drafts stay flexible." }
-                  ].map((item, i) => (
-                    <div key={i} className="flex gap-4">
-                      <div className="flex-shrink-0 mt-1 h-5 w-5 rounded-full bg-emerald-500/20 flex items-center justify-center">
-                        <div className="h-2 w-2 rounded-full bg-emerald-500 outline outline-4 outline-emerald-500/10" />
-                      </div>
-                      <div>
-                        <h4 className="font-bold text-white mb-1">{item.label}</h4>
-                        <p className="text-neutral-400 text-sm">{item.text}</p>
-                      </div>
+                        <p className="mx-auto mt-5 max-w-2xl text-base leading-relaxed text-white/85 sm:text-lg">
+                            ESSET helps CSOs map strategy to evidence, track
+                            what changes, and report without the spreadsheet
+                            scramble. Replace reactive reporting with calm,
+                            decision-ready intelligence.
+                        </p>
+
+                        <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+                            <Link
+                                href="/auth/sign-up"
+                                data-testid="hero-cta-primary"
+                                className="landing-cta-primary min-w-[170px]"
+                            >
+                                Start 7-Day Pilot
+                            </Link>
+                            <Link
+                                href="/demo"
+                                data-testid="hero-cta-secondary"
+                                className="landing-cta-outline min-w-[150px]"
+                            >
+                                Watch demo
+                            </Link>
+                            <a
+                                href="#reality-check"
+                                className="landing-cta-outline"
+                            >
+                                Take the Reality Check
+                            </a>
+                        </div>
+
+                        {/* Trust Cue Row */}
+                        <div className="mt-8 flex flex-wrap items-center justify-center gap-2">
+                            <div className="landing-trust-chip">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
+                                Role-based access
+                            </div>
+                            <div className="landing-trust-chip">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0" /><path d="M1.42 9a16 16 0 0 1 21.16 0" /><path d="M8.53 16.11a6 6 0 0 1 6.95 0" /><line x1="12" y1="20" x2="12.01" y2="20" /></svg>
+                                Low-bandwidth friendly
+                            </div>
+                            <div className="landing-trust-chip">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 1 1-7.6-11.7A8.38 8.38 0 0 1 16.3 4.5" /><path d="M3 21l1.9-1.9" /><path d="M22 22l-2-2" /><circle cx="11" cy="11" r="8" /></svg>
+                                Evidence linked to ToC
+                            </div>
+                        </div>
+
+                        <p className="mt-10 text-sm font-medium text-white/70 leading-relaxed">
+                            Not another reporting tool. ESSET links strategy,
+                            evidence, and learning — <br className="hidden sm:block" /> so adaptation becomes
+                            routine.
+                        </p>
                     </div>
-                  ))}
-                </div>
-              </div>
-              <div className="flex-1 w-full max-w-lg aspect-square bg-neutral-900 border border-white/5 rounded-3xl p-8 flex flex-col items-center justify-center text-center">
-                <Image
-                  src="/brand/esset-logo-full.svg"
-                  alt=""
-                  width={192}
-                  height={192}
-                  className="w-48 h-auto opacity-20 mb-8"
-                  aria-hidden="true"
-                />
-                <p className="text-neutral-500 text-sm max-w-xs uppercase tracking-widest font-bold">Authenticated Dashboard Preview Coming Soon</p>
-              </div>
-            </div>
-          </div>
-        </section>
+                </section>
 
-        {/* How It Works */}
-        <section id="how-it-works" className="py-20 bg-neutral-900/50">
-          <div className="container mx-auto px-4 sm:px-6">
-            <h2 className="text-3xl font-bold mb-12 text-center">How it works in 3 steps</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-12 relative">
-              {[
-                { step: "01", title: "Set up your workspace", desc: "Invite your team and organize by project folders." },
-                { step: "02", title: "Map your logic", desc: "Use the visual builder to map activities and pin assumptions." },
-                { step: "03", title: "Publish and Track", desc: "Lock your logic into a versioned snapshot and start monitoring." }
-              ].map((s, i) => (
-                <div key={i} className="relative z-10 flex flex-col items-center text-center group">
-                  <div className="w-16 h-16 rounded-full bg-emerald-600/10 flex items-center justify-center text-emerald-500 text-2xl font-black mb-6 border border-emerald-500/20 group-hover:bg-emerald-600 group-hover:text-white transition-all">
-                    {s.step}
-                  </div>
-                  <h3 className="text-xl font-bold mb-3">{s.title}</h3>
-                  <p className="text-neutral-400 text-sm max-w-[250px]">{s.desc}</p>
-                </div>
-              ))}
-              {/* Connector line for desktop */}
-              <div className="hidden md:block absolute top-12 left-0 w-full h-px bg-white/5 -z-0" />
-            </div>
-          </div>
-        </section>
+                {/* ══════ 2. REALITY HOOK ══════ */}
+                <section className="landing-section bg-white px-4 py-14 sm:px-6 sm:py-20">
+                    <div
+                        className="mx-auto w-full text-center"
+                        style={{ maxWidth: "var(--esset-container-max)" }}
+                    >
+                        <h2 className="landing-section-heading">
+                            Is your MEAL helping you decide what to do next —
+                            before report week?
+                        </h2>
+                        <p className="landing-section-subheading mx-auto mt-4">
+                            Most CSOs only discover evidence gaps when the
+                            deadline arrives. ESSET makes readiness visible from
+                            day one.
+                        </p>
+                    </div>
+                </section>
 
-        {/* Personas */}
-        <section className="py-20 lg:py-32">
-          <div className="container mx-auto px-4 sm:px-6">
-            <h2 className="text-3xl font-bold mb-16 text-center">Tailored for your entire team</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {[
-                { role: "Executive", value: "Dashboard clarity for portfolio decisions." },
-                { role: "Program Manager", value: "Plan, monitor, and report without manual overhead." },
-                { role: "MEAL Lead", value: "Structured engine for quality standards and learning." },
-                { role: "Field Team", value: "Simple interfaces to capture what matters in real-time." }
-              ].map((p, i) => (
-                <div key={i} className="p-8 rounded-3xl bg-neutral-900 border border-white/5 flex flex-col h-full">
-                  <span className="inline-block px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-500 text-[10px] font-bold uppercase tracking-wider mb-6 w-fit">
-                    {p.role}
-                  </span>
-                  <p className="text-lg font-medium text-neutral-200 mt-auto">{p.value}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
+                {/* ══════ 3. COMPARISON: Before / With ESSET ══════ */}
+                <section className="landing-section landing-section-alt px-4 py-14 sm:px-6 sm:py-20">
+                    <div
+                        className="mx-auto w-full"
+                        style={{ maxWidth: "var(--esset-container-max)" }}
+                    >
+                        <h2 className="landing-section-heading text-center">
+                            From compliance scramble to decision-ready
+                            intelligence
+                        </h2>
+                        <p className="landing-section-subheading mx-auto mt-3 text-center">
+                            See what changes when your MEAL system is linked to
+                            your strategy — not just your reporting deadlines.
+                        </p>
 
-        {/* Trust & Governance */}
-        <section className="py-20 border-t border-white/5">
-          <div className="container mx-auto px-4 sm:px-6">
-            <div className="max-w-4xl mx-auto rounded-3xl bg-gradient-to-br from-neutral-900 to-neutral-950 p-8 sm:p-12 border border-emerald-500/10 shadow-2xl relative overflow-hidden">
-              <div className="relative z-10 flex flex-col md:flex-row gap-12 items-center">
-                <div className="flex-1">
-                  <h2 className="text-3xl font-bold mb-6">Trust & Governance</h2>
-                  <ul className="space-y-4">
-                    <li className="flex gap-3 text-neutral-400">
-                      <svg className="h-5 w-5 text-emerald-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                      <span><strong className="text-white">Data Integrity</strong>: Immutable snapshots prevent accidental edits to published logic.</span>
-                    </li>
-                    <li className="flex gap-3 text-neutral-400">
-                      <svg className="h-5 w-5 text-emerald-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                      <span><strong className="text-white">Tenant Isolation</strong>: Your data stays yours via hardened Row Level Security (RLS).</span>
-                    </li>
-                    <li className="flex gap-3 text-neutral-400">
-                      <svg className="h-5 w-5 text-emerald-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                      <span><strong className="text-white">Role-Based Access</strong>: Control precisely who can draft, publish, or view.</span>
-                    </li>
-                  </ul>
-                </div>
-                <div className="flex-shrink-0">
-                  <Link
-                    href="/auth/sign-up"
-                    className="inline-flex h-14 items-center justify-center rounded-full bg-white px-10 text-lg font-bold text-black hover:bg-neutral-200 transition-colors"
-                  >
-                    Get Started Now
-                  </Link>
-                </div>
-              </div>
-              <div className="absolute top-0 left-0 w-full h-1 bg-emerald-500/30" />
-            </div>
-          </div>
-        </section>
-      </main>
+                        <div className="landing-comparison-grid mt-10">
+                            {/* Before */}
+                            <div className="landing-card border-red-100 bg-red-50/40">
+                                <h3 className="mb-4 text-lg font-bold text-red-900">
+                                    ❌ Before ESSET
+                                </h3>
+                                <ul className="space-y-2.5">
+                                    {BEFORE_ESSET.map((item, i) => (
+                                        <li
+                                            key={i}
+                                            className="flex items-start gap-2 text-sm leading-relaxed text-red-800"
+                                        >
+                                            <span className="mt-1.5 h-1 w-1 flex-shrink-0 rounded-full bg-red-400" />
+                                            <span dangerouslySetInnerHTML={{ __html: item.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }} />
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                            {/* With ESSET */}
+                            <div className="landing-card border-emerald-100 bg-emerald-50/40">
+                                <h3 className="mb-4 text-lg font-bold text-emerald-900">
+                                    ✅ With ESSET
+                                </h3>
+                                <ul className="space-y-2.5">
+                                    {WITH_ESSET.map((item, i) => (
+                                        <li
+                                            key={i}
+                                            className="flex items-start gap-2 text-sm leading-relaxed text-emerald-800"
+                                        >
+                                            <span className="mt-1.5 h-1 w-1 flex-shrink-0 rounded-full bg-emerald-400" />
+                                            <span dangerouslySetInnerHTML={{ __html: item.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }} />
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </section>
 
-      {/* Footer */}
-      <footer className="py-12 border-t border-white/5 mt-20">
-        <div className="container mx-auto px-4 sm:px-6">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-8">
-            <div className="flex flex-col items-center md:items-start gap-4">
-              <Image
-                src="/brand/esset-logo-header.svg"
-                alt="ESSET MEAL"
-                width={105}
-                height={24}
-                className="h-6 w-auto opacity-60"
-              />
-              <p className="text-xs text-neutral-500 font-medium uppercase tracking-[0.2em]">Built for impact, verified by data.</p>
-            </div>
-            <div className="flex gap-8 text-sm text-neutral-400 font-medium">
-              <Link href="/auth/sign-in" className="hover:text-emerald-500 transition">Sign in</Link>
-              <Link href="/auth/sign-up" className="hover:text-emerald-500 transition">Sign up</Link>
-              <Link href="/demo" className="hover:text-emerald-500 transition">Product Demo</Link>
-              <a href="https://github.com/esset-meal" target="_blank" rel="noopener noreferrer" className="hover:text-emerald-500 transition">GitHub</a>
-            </div>
-          </div>
-          <div className="mt-12 text-center text-[10px] text-neutral-600 uppercase tracking-widest font-bold">
-            © {new Date().getFullYear()} ESSET MEAL — All rights protected.
-          </div>
+                {/* ══════ 4. WHAT / WHY / HOW ══════ */}
+                <section
+                    id="how-it-works"
+                    className="landing-section bg-white px-4 py-14 sm:px-6 sm:py-20"
+                >
+                    <div
+                        className="mx-auto w-full"
+                        style={{ maxWidth: "var(--esset-container-max)" }}
+                    >
+                        <h2 className="landing-section-heading text-center">
+                            Connect strategy to evidence — and evidence to
+                            action
+                        </h2>
+
+                        <div className="mt-10 grid gap-6 sm:grid-cols-3">
+                            {WHAT_WHY_HOW.map((card) => (
+                                <div key={card.title} className="landing-card">
+                                    <span className="landing-badge bg-esset-bg text-esset-teal-800">
+                                        {card.title}
+                                    </span>
+                                    <h3 className="mt-3 text-base font-bold text-esset-ink">
+                                        {card.subtitle}
+                                    </h3>
+                                    <p className="mt-2 text-sm leading-relaxed text-esset-muted">
+                                        {card.body}
+                                    </p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </section>
+
+                {/* ══════ 5. HOW IT WORKS: Map → Track → Learn & Adapt ══════ */}
+                <section className="landing-section landing-section-alt px-4 py-12 sm:px-6 sm:py-16">
+                    <div
+                        className="mx-auto w-full"
+                        style={{ maxWidth: "var(--esset-container-max)" }}
+                    >
+                        <h2 className="landing-section-heading text-center">
+                            Three steps to evidence-ready reporting
+                        </h2>
+
+                        {/* Pipeline diagram */}
+                        <div className="mt-8 flex flex-col items-center">
+                            <div className="landing-pipeline-container">
+                                <span className="landing-pipeline-node">Projects</span>
+                                <span className="landing-pipeline-arrow rotate-90 md:rotate-0" aria-hidden="true">→</span>
+                                <span className="landing-pipeline-node">Analyze</span>
+                                <span className="landing-pipeline-arrow rotate-90 md:rotate-0" aria-hidden="true">→</span>
+                                <span className="landing-pipeline-node">Theory of Change</span>
+                                <span className="landing-pipeline-arrow rotate-90 md:rotate-0" aria-hidden="true">→</span>
+                                <span className="landing-pipeline-node">Evidence</span>
+                                <span className="landing-pipeline-arrow rotate-90 md:rotate-0" aria-hidden="true">→</span>
+                                <span className="landing-pipeline-node">Learning</span>
+                                <span className="landing-pipeline-arrow rotate-90 md:rotate-0" aria-hidden="true">→</span>
+                                <span className="landing-pipeline-node">Reports</span>
+                            </div>
+                            <p className="mt-4 text-[11px] font-medium text-esset-muted uppercase tracking-wider">
+                                💡 Analyze helps teams spot gaps early
+                            </p>
+                        </div>
+
+                        <div className="mt-8 grid gap-6 sm:grid-cols-3">
+                            {HOW_IT_WORKS_STEPS.map((step, i) => {
+                                const icons = [
+                                    /* Map icon */
+                                    <svg key="map" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 7l6-3 6 3 6-3v13l-6 3-6-3-6 3z" /><path d="M9 4v13" /><path d="M15 7v13" /></svg>,
+                                    /* Capture icon */
+                                    <svg key="track" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>,
+                                    /* Learn & Adapt icon (Loop metaphor) */
+                                    <svg key="learn" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2" /></svg>,
+                                ];
+                                return (
+                                    <div key={step.title} className="landing-card text-center">
+                                        <div className="landing-step-icon mx-auto">
+                                            {icons[i]}
+                                        </div>
+                                        <div className="flex items-center justify-center gap-2">
+                                            <span className="landing-step-number" style={{ width: '1.75rem', height: '1.75rem', fontSize: '0.8125rem' }}>
+                                                {i + 1}
+                                            </span>
+                                            <h3 className="text-lg font-bold text-esset-ink">
+                                                {step.title}
+                                            </h3>
+                                        </div>
+                                        <p className="mt-3 text-sm leading-relaxed text-esset-muted">
+                                            {step.body}
+                                        </p>
+                                        <p className="mt-2 rounded-lg bg-esset-bg px-3 py-2 text-xs font-medium text-esset-teal-800">
+                                            💡 {step.hint}
+                                        </p>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </section>
+
+                {/* ══════ 6. WHO CONTROLS WHAT (RBAC) ══════ */}
+                <section className="landing-section bg-white px-4 py-14 sm:px-6 sm:py-20">
+                    <div
+                        className="mx-auto w-full"
+                        style={{ maxWidth: "var(--esset-container-max)" }}
+                    >
+                        <h2 className="landing-section-heading text-center">
+                            Who controls what — safe collaboration by design
+                        </h2>
+                        <p className="landing-section-subheading mx-auto mt-3 text-center">
+                            Role-based access means teams only see what they
+                            need. De-identified data practices are built in.
+                        </p>
+
+                        <div className="mt-8">
+                            {/* Desktop Table View */}
+                            <div className="hidden md:block overflow-x-auto">
+                                <table className="w-full min-w-[480px] text-left text-sm">
+                                    <thead>
+                                        <tr className="border-b border-esset-border">
+                                            <th className="pb-3 pr-4 font-bold text-esset-ink">
+                                                Role
+                                            </th>
+                                            <th className="pb-3 pr-4 font-bold text-esset-ink">
+                                                Access
+                                            </th>
+                                            <th className="pb-3 font-bold text-esset-ink">
+                                                Capability
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {ACCESS_CONTROL_ROWS.map((row) => (
+                                            <tr
+                                                key={row.role}
+                                                className="border-b border-esset-border/50"
+                                            >
+                                                <td className="py-3 pr-4 font-semibold text-esset-ink">
+                                                    {row.role}
+                                                </td>
+                                                <td className="py-3 pr-4 text-esset-muted">
+                                                    {row.access}
+                                                </td>
+                                                <td className="py-3">
+                                                    <span className="inline-flex rounded-full bg-esset-bg px-2.5 py-0.5 text-xs font-bold text-esset-teal-800">
+                                                        {row.capability}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {/* Mobile Card View */}
+                            <div className="md:hidden">
+                                {ACCESS_CONTROL_ROWS.map((row) => (
+                                    <div key={row.role} className="rbac-mobile-card">
+                                        <div className="rbac-mobile-card-row">
+                                            <span className="rbac-label">Role</span>
+                                            <span className="rbac-value font-bold">{row.role}</span>
+                                        </div>
+                                        <div className="rbac-mobile-card-row">
+                                            <span className="rbac-label">What they can do</span>
+                                            <span className="rbac-value">{row.access}</span>
+                                        </div>
+                                        <div className="rbac-mobile-card-row">
+                                            <span className="rbac-label">Visibility</span>
+                                            <span className="rbac-value">
+                                                <span className="inline-flex rounded-full bg-esset-bg px-2.5 py-0.5 text-xs font-bold text-esset-teal-800">
+                                                    {row.capability}
+                                                </span>
+                                            </span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <p className="mt-6 text-center text-sm font-medium text-esset-teal-800 bg-esset-bg/40 p-3 rounded-lg border border-esset-teal-800/10">
+                                🛡️ <strong>Safe Collaboration:</strong> Donors see final outputs — not internal drafts or raw evidence.
+                            </p>
+                        </div>
+                    </div>
+                </section>
+
+                {/* ══════ 7. REALITY CHECK TOOL ══════ */}
+                <section
+                    id="reality-check"
+                    className="landing-section landing-section-alt px-4 py-14 sm:px-6 sm:py-20"
+                >
+                    <div
+                        className="mx-auto w-full"
+                        style={{ maxWidth: "var(--esset-container-max)" }}
+                    >
+                        <h2 className="landing-section-heading text-center">
+                            Reality Check: How ready is your MEAL system?
+                        </h2>
+                        <p className="landing-section-subheading mx-auto mt-3 text-center">
+                            Answer 12 quick questions. Your responses stay in
+                            your browser — nothing is uploaded.
+                        </p>
+
+                        <div className="mt-8">
+                            <RealityCheckTool />
+                        </div>
+                    </div>
+                </section>
+
+                {/* ══════ 8. USE CASES ══════ */}
+                <section
+                    id="use-cases"
+                    className="landing-section bg-white px-4 py-14 sm:px-6 sm:py-20"
+                >
+                    <div
+                        className="mx-auto w-full"
+                        style={{ maxWidth: "var(--esset-container-max)" }}
+                    >
+                        <h2 className="landing-section-heading text-center">
+                            Built for how CSOs actually work
+                        </h2>
+
+                        <div className="mt-10 grid gap-5 sm:grid-cols-2">
+                            {TAILORED_SOLUTIONS.map((sol) => (
+                                <div key={sol.title} className="landing-card border-esset-border/60">
+                                    <h3 className="text-base font-bold text-esset-ink">
+                                        {sol.title}
+                                    </h3>
+                                    <p className="mt-2 text-sm leading-relaxed text-esset-muted">
+                                        {sol.body}
+                                    </p>
+                                    <div className="mt-4 flex items-center justify-between border-t border-esset-border/40 pt-3">
+                                        <span className="text-xs font-medium text-esset-teal-800">
+                                            {sol.fit}
+                                        </span>
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-esset-teal-800/30"><polyline points="9 18 15 12 9 6" /></svg>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </section>
+
+                {/* ══════ 9. PRINCIPLES / MANIFESTO ══════ */}
+                <section className="landing-section landing-section-alt px-4 py-14 sm:px-6 sm:py-20">
+                    <div
+                        className="mx-auto w-full"
+                        style={{ maxWidth: "var(--esset-container-max)" }}
+                    >
+                        <h2 className="landing-section-heading text-center">
+                            What we believe
+                        </h2>
+
+                        <ul className="mx-auto mt-8 max-w-2xl space-y-3">
+                            {MANIFESTO_LINES.map((line, i) => (
+                                <li
+                                    key={i}
+                                    className="flex items-start gap-3 text-sm leading-relaxed text-esset-ink"
+                                >
+                                    <span className="mt-0.5 flex-shrink-0 text-esset-teal-800">
+                                        ▸
+                                    </span>
+                                    {line}
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                </section>
+
+                {/* ══════ 10. FAQ ══════ */}
+                <section
+                    id="faq"
+                    className="landing-section bg-white px-4 py-14 sm:px-6 sm:py-20"
+                >
+                    <div
+                        className="mx-auto w-full"
+                        style={{ maxWidth: "var(--esset-container-max)" }}
+                    >
+                        <h2 className="landing-section-heading text-center">
+                            Questions teams ask before getting started
+                        </h2>
+
+                        <div className="mx-auto mt-8 max-w-2xl">
+                            <FaqAccordion items={FAQ_ITEMS} />
+                        </div>
+                    </div>
+                </section>
+
+                {/* ══════ 11. FINAL CTA BAND ══════ */}
+                <section className="landing-hero px-4 py-14 sm:px-6 sm:py-20">
+                    <div
+                        className="mx-auto w-full text-center"
+                        style={{ maxWidth: "var(--esset-container-max)" }}
+                    >
+                        <h2 className="text-2xl font-extrabold text-white sm:text-3xl">
+                            Ready to see how it works?
+                        </h2>
+                        <p className="mx-auto mt-3 max-w-xl text-base text-white/80">
+                            Start a 7-day pilot. Map one project, run the
+                            Reality Check, and test your reporting readiness.
+                        </p>
+                        <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
+                            <Link
+                                href="/auth/sign-up"
+                                className="landing-cta-primary"
+                            >
+                                Start 7-Day Pilot
+                            </Link>
+                            <Link
+                                href="/auth/sign-in"
+                                className="landing-cta-outline"
+                            >
+                                Sign In
+                            </Link>
+                        </div>
+                    </div>
+                </section>
+            </main>
+
+            {/* ══════ FOOTER ══════ */}
+            <footer className="border-t border-esset-border bg-white px-4 py-10 sm:px-6">
+                <div
+                    className="mx-auto w-full"
+                    style={{ maxWidth: "var(--esset-container-max)" }}
+                >
+                    <div className="flex flex-col gap-8 sm:flex-row sm:items-start sm:justify-between">
+                        {/* Brand */}
+                        <div>
+                            <Image
+                                src="/brand/esset-meal-logo.svg"
+                                alt="ESSET MEAL"
+                                width={150}
+                                height={30}
+                                className="h-8 w-auto"
+                            />
+                            <p className="mt-2 text-sm font-medium text-esset-muted">
+                                From Compliance to Intelligence.
+                            </p>
+                            <p className="mt-1 text-xs text-esset-muted/70">
+                                Built for impact, verified by data.
+                            </p>
+                        </div>
+
+                        {/* Contact */}
+                        <div className="text-sm leading-relaxed text-esset-muted">
+                            <p className="font-semibold text-esset-ink">Contact</p>
+                            <p className="mt-1">Nifas Silk Lafto Sub-city</p>
+                            <p>Addis Ababa, Ethiopia</p>
+                            <p className="mt-2">
+                                <a href="mailto:info@essetlab.org" className="underline hover:text-esset-ink">info@essetlab.org</a>
+                            </p>
+                            <p>
+                                <a href="mailto:gbeyene@essetlab.org" className="underline hover:text-esset-ink">gbeyene@essetlab.org</a>
+                            </p>
+                        </div>
+
+                        {/* CTAs */}
+                        <div className="flex flex-wrap gap-2 sm:flex-col">
+                            <Link
+                                href="/auth/sign-in"
+                                className="inline-flex rounded-full border border-esset-border bg-white px-4 py-2 text-sm font-semibold text-esset-ink hover:bg-esset-bg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-esset-focus"
+                            >
+                                Sign In
+                            </Link>
+                            <Link
+                                href="/auth/sign-up"
+                                className="esset-btn-primary inline-flex rounded-full px-4 py-2 text-sm"
+                            >
+                                Start 7-Day Pilot
+                            </Link>
+                        </div>
+                    </div>
+                </div>
+            </footer>
         </div>
-      </footer>
-    </div>
-  );
+    );
 }

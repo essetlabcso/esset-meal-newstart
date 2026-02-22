@@ -30,45 +30,64 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
                     <button
                         type="submit"
                         className="rounded-lg bg-red-500/10 px-4 py-2 text-sm font-medium text-red-400 hover:bg-red-500/20 transition"
-                        onClick={(e) => {
-                            if (!confirm("Are you sure you want to delete this project?")) {
-                                e.preventDefault();
-                            }
-                        }}
                     >
                         Delete
                     </button>
                 </form>
             </div>
 
-            <div className="mb-8 grid grid-cols-2 gap-4">
-                <Link
-                    href={`/app/projects/${projectId}/toc`}
-                    className="flex items-center justify-between rounded-xl bg-white/5 border border-white/5 p-4 hover:bg-white/10 transition group"
-                >
-                    <div>
-                        <div className="text-sm font-medium text-white">ToC Builder</div>
-                        <div className="text-xs text-gray-400">Map theory of change graph</div>
-                    </div>
-                    <span className="text-emerald-500 group-hover:translate-x-1 transition-transform">→</span>
-                </Link>
-                <Link
-                    href={`/app/projects/${projectId}/reporting-periods`}
-                    className="flex items-center justify-between rounded-xl bg-white/5 border border-white/5 p-4 hover:bg-white/10 transition group"
-                >
-                    <div>
-                        <div className="text-sm font-medium text-white">Reporting Periods</div>
-                        <div className="text-xs text-gray-400">Manage time blocks for reporting</div>
-                    </div>
-                    <span className="text-emerald-500 group-hover:translate-x-1 transition-transform">→</span>
-                </Link>
+            <div className="mb-8 grid grid-cols-1 gap-3 md:grid-cols-2">
                 <Link
                     href={`/app/projects/${projectId}/analysis`}
                     className="flex items-center justify-between rounded-xl bg-white/5 border border-white/5 p-4 hover:bg-white/10 transition group"
                 >
                     <div>
-                        <div className="text-sm font-medium text-white">Analysis Snapshots</div>
-                        <div className="text-xs text-gray-400">View analysis history</div>
+                        <div className="text-sm font-medium text-white">Analyze</div>
+                        <div className="text-xs text-gray-400">Context, stakeholders, risks</div>
+                    </div>
+                    <span className="text-emerald-500 group-hover:translate-x-1 transition-transform">→</span>
+                </Link>
+
+                <Link
+                    href={`/app/projects/${projectId}/toc`}
+                    className="flex items-center justify-between rounded-xl bg-white/5 border border-white/5 p-4 hover:bg-white/10 transition group"
+                >
+                    <div>
+                        <div className="text-sm font-medium text-white">Strategy (ToC)</div>
+                        <div className="text-xs text-gray-400">Build and publish your living strategy</div>
+                    </div>
+                    <span className="text-emerald-500 group-hover:translate-x-1 transition-transform">→</span>
+                </Link>
+
+                <Link
+                    href={`/app/projects/${projectId}/evidence`}
+                    className="flex items-center justify-between rounded-xl bg-white/5 border border-white/5 p-4 hover:bg-white/10 transition group"
+                >
+                    <div>
+                        <div className="text-sm font-medium text-white">Evidence (Foundations)</div>
+                        <div className="text-xs text-gray-400">Reporting periods and evidence setup</div>
+                    </div>
+                    <span className="text-emerald-500 group-hover:translate-x-1 transition-transform">→</span>
+                </Link>
+
+                <Link
+                    href={`/app/projects/${projectId}/reports`}
+                    className="flex items-center justify-between rounded-xl bg-white/5 border border-white/5 p-4 hover:bg-white/10 transition group"
+                >
+                    <div>
+                        <div className="text-sm font-medium text-white">Reports</div>
+                        <div className="text-xs text-gray-400">Snapshot-bound exports and manifests</div>
+                    </div>
+                    <span className="text-emerald-500 group-hover:translate-x-1 transition-transform">→</span>
+                </Link>
+
+                <Link
+                    href={`/app/projects/${projectId}/learning`}
+                    className="flex items-center justify-between rounded-xl bg-white/5 border border-white/5 p-4 hover:bg-white/10 transition group"
+                >
+                    <div>
+                        <div className="text-sm font-medium text-white">Learning</div>
+                        <div className="text-xs text-gray-400">Decisions tied to evidence (coming soon)</div>
                     </div>
                     <span className="text-emerald-500 group-hover:translate-x-1 transition-transform">→</span>
                 </Link>

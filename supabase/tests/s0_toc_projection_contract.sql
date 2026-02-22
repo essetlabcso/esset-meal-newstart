@@ -11,10 +11,15 @@ declare
   v_draft uuid;
   v_goal uuid;
   v_outcome_a uuid;
+  v_outcome_b uuid;
   v_output_shared uuid;
   v_primary_rows int;
   v_ghost_rows int;
+  v_bad_ghost_rows int;
   v_distinct_node_count int;
+  v_order_run_1 text[];
+  v_order_run_2 text[];
+  v_row_title text;
 begin
   insert into auth.users (id, email, encrypted_password, email_confirmed_at, role)
   values (v_user, 's0_proj_' || extract(epoch from now())::text || '@test.local', 'x', now(), 'authenticated');
@@ -37,25 +42,25 @@ begin
   values (v_org, v_draft, 'OUTCOME', 'Outcome A', v_user, v_goal) returning id into v_outcome_a;
 
   insert into public.toc_nodes (tenant_id, toc_version_id, node_type, title, created_by, primary_parent_id)
+  values (v_org, v_draft, 'OUTCOME', 'Outcome B', v_user, v_goal) returning id into v_outcome_b;
+
+  insert into public.toc_nodes (tenant_id, toc_version_id, node_type, title, created_by, primary_parent_id)
   values (v_org, v_draft, 'OUTPUT', 'Shared Output', v_user, v_outcome_a) returning id into v_output_shared;
 
-  -- Secondary link: same output projected under goal as ghost row
+  -- Secondary link: same output projected under Outcome B as ghost row
   insert into public.toc_edges (
     tenant_id, toc_version_id, source_node_id, target_node_id, edge_type,
     edge_kind, mechanism, confidence, risk_flag, created_by
   ) values (
-    v_org, v_draft, v_goal, v_output_shared, 'REFERENCES',
+    v_org, v_draft, v_outcome_b, v_output_shared, 'REFERENCES',
     'secondary_link', null, 'medium', 'none', v_user
   );
 
-  perform public.rebuild_toc_projections(v_org, v_project, v_draft);
-
   select count(*) into v_primary_rows
-  from public.toc_projections
-  where tenant_id = v_org
-    and toc_version_id = v_draft
+  from public.read_toc_projection_matrix(v_org, v_project, v_draft) p
+  where p.row_kind = 'primary'
     and node_id = v_output_shared
-    and is_ghost = false;
+    and p.source_edge_id is null;
 
   if v_primary_rows <> 1 then
     reset role;
@@ -63,25 +68,94 @@ begin
   end if;
 
   select count(*) into v_ghost_rows
-  from public.toc_projections
-  where tenant_id = v_org
-    and toc_version_id = v_draft
+  from public.read_toc_projection_matrix(v_org, v_project, v_draft) p
+  where p.row_kind = 'ghost_secondary'
     and node_id = v_output_shared
-    and is_ghost = true;
+    and p.source_edge_id is not null;
 
   if v_ghost_rows <> 1 then
     reset role;
     raise exception 'TOC-PROJ FAIL: expected one ghost row for shared node';
   end if;
 
-  select count(distinct node_id) into v_distinct_node_count
-  from public.toc_projections
-  where tenant_id = v_org
-    and toc_version_id = v_draft;
+  select count(*) into v_bad_ghost_rows
+  from public.read_toc_projection_matrix(v_org, v_project, v_draft) p
+  left join public.toc_edges e on e.id = p.source_edge_id
+  where p.row_kind = 'ghost_secondary'
+    and coalesce(e.edge_kind, '') <> 'secondary_link';
 
-  if v_distinct_node_count <> 3 then
+  if v_bad_ghost_rows <> 0 then
+    reset role;
+    raise exception 'TOC-PROJ FAIL: ghost rows must map to secondary_link edges';
+  end if;
+
+  select count(distinct node_id) into v_distinct_node_count
+  from public.read_toc_projection_matrix(v_org, v_project, v_draft);
+
+  if v_distinct_node_count <> 4 then
     reset role;
     raise exception 'TOC-PROJ FAIL: projection duplicated node records';
+  end if;
+
+  select array_agg(
+    p.path_sort_key
+      || '|' || p.row_kind
+      || '|' || p.node_id::text
+      || '|' || coalesce(p.projection_parent_id::text, '')
+      || '|' || coalesce(p.primary_parent_id::text, '')
+    order by
+      p.path_sort_key,
+      p.row_kind,
+      p.node_id,
+      coalesce(p.projection_parent_id, '00000000-0000-0000-0000-000000000000'::uuid),
+      coalesce(p.primary_parent_id, '00000000-0000-0000-0000-000000000000'::uuid)
+  )
+  into v_order_run_1
+  from public.read_toc_projection_matrix(v_org, v_project, v_draft) p;
+
+  select array_agg(
+    p.path_sort_key
+      || '|' || p.row_kind
+      || '|' || p.node_id::text
+      || '|' || coalesce(p.projection_parent_id::text, '')
+      || '|' || coalesce(p.primary_parent_id::text, '')
+    order by
+      p.path_sort_key,
+      p.row_kind,
+      p.node_id,
+      coalesce(p.projection_parent_id, '00000000-0000-0000-0000-000000000000'::uuid),
+      coalesce(p.primary_parent_id, '00000000-0000-0000-0000-000000000000'::uuid)
+  )
+  into v_order_run_2
+  from public.read_toc_projection_matrix(v_org, v_project, v_draft) p;
+
+  if v_order_run_1 is distinct from v_order_run_2 then
+    reset role;
+    raise exception 'TOC-PROJ FAIL: deterministic ordering drift between projection runs';
+  end if;
+
+  update public.toc_nodes
+  set title = 'Shared Output Edited'
+  where id = v_output_shared;
+
+  select count(distinct p.node_title)
+  into v_primary_rows
+  from public.read_toc_projection_matrix(v_org, v_project, v_draft) p
+  where p.node_id = v_output_shared;
+
+  if v_primary_rows <> 1 then
+    reset role;
+    raise exception 'TOC-PROJ FAIL: shared node title drifted across projection rows';
+  end if;
+
+  select max(p.node_title)
+  into v_row_title
+  from public.read_toc_projection_matrix(v_org, v_project, v_draft) p
+  where p.node_id = v_output_shared;
+
+  if v_row_title <> 'Shared Output Edited' then
+    reset role;
+    raise exception 'TOC-PROJ FAIL: node edit did not propagate to read-model rows';
   end if;
 
   reset role;

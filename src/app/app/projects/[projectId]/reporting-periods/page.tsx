@@ -56,11 +56,6 @@ export default async function ReportingPeriodsPage({ params }: ReportingPeriodsP
                                             <button
                                                 type="submit"
                                                 className="text-xs text-red-400 hover:text-red-300 transition px-2 py-1"
-                                                onClick={(e) => {
-                                                    if (!confirm("Delete this reporting period?")) {
-                                                        e.preventDefault();
-                                                    }
-                                                }}
                                             >
                                                 Delete
                                             </button>
